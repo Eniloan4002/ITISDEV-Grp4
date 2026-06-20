@@ -1,0 +1,17 @@
+{
+  "name": "am-rmis",
+  "version": "0.1.0",
+  "description": "Restaurant Management Information System (RMIS) for AM Restaurant. ITISDEV S12 - Group 4.",
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "keywords": [
+    "rmis",
+    "restaurant",
+    "itisdev"
+  ],
+  "license": "UNLICENSED"
+}

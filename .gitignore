@@ -1,0 +1,14 @@
+# Dependencies (none required yet — kept for when the team adds packages)
+node_modules/
+
+# Environment / secrets
+.env
+.env.local
+
+# OS / editor noise
+.DS_Store
+*.log
+
+# NOTE: removelater/ holds context PDFs + Jira screenshots only.
+# It is intentionally NOT committed. Delete once the team no longer needs it.
+removelater/

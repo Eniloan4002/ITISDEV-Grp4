@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create User Account &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <h1>Create User Account</h1>
+      <p class="subtitle">Administrators create accounts for incoming restaurant staff.</p>
+    </header>
+
+    <!-- Page-level message (success or general error). Hidden until set by JS. -->
+    <p id="form-message" class="form-message" role="alert" hidden></p>
+
+    <form id="register-form" novalidate>
+      <div class="field">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" name="fullName" autocomplete="off" required>
+        <span class="field-error" id="error-fullName"></span>
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="off" required>
+        <span class="field-error" id="error-email"></span>
+      </div>
+
+      <div class="field">
+        <label for="password">Temporary Password</label>
+        <input type="text" id="password" name="password" autocomplete="off" required>
+        <span class="field-hint">Minimum 8 characters. The staff member changes this on activation.</span>
+        <span class="field-error" id="error-password"></span>
+      </div>
+
+      <div class="field">
+        <label for="role">Assigned Role</label>
+        <!-- Placeholder role list. The authoritative roles belong to the
+             Role & Permissions story (SI-10), owned by another teammate. -->
+        <select id="role" name="role" required>
+          <option value="">-- Select a role --</option>
+          <option value="Admin">Admin</option>
+          <option value="Manager">Manager</option>
+          <option value="Cashier">Cashier</option>
+          <option value="Staff">Staff</option>
+        </select>
+        <span class="field-error" id="error-role"></span>
+      </div>
+
+      <div class="actions">
+        <button type="submit" id="submit-btn">Create Account</button>
+        <a href="/index.html" class="cancel-link">Cancel</a>
+      </div>
+    </form>
+  </main>
+
+  <script src="/js/register.js"></script>
+</body>
+</html>

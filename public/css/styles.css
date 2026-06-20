@@ -1,0 +1,208 @@
+/* Shared RMIS stylesheet.
+   Theme copied from the login mockup (login.html) so all pages share one look.
+   NOTE: login.html still carries its own inline copy of this theme "for now" —
+   the team can later switch it to this shared stylesheet to remove duplication. */
+
+:root {
+  --primary-color: #ff6b6b;
+  --primary-hover: #fa5252;
+  --bg-color: #f4f7f6;
+  --box-bg: #ffffff;
+  --text-dark: #333333;
+  --text-light: #888888;
+  --input-border: #dddddd;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-dark);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 16px;
+  line-height: 1.5;
+}
+
+.container {
+  background-color: var(--box-bg);
+  width: 100%;
+  max-width: 440px;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* Headers */
+.page-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  color: var(--text-light);
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.muted {
+  color: var(--text-light);
+}
+
+/* Form fields */
+.field {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  background: var(--box-bg);
+  color: var(--text-dark);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 6px;
+}
+
+.field-error {
+  font-size: 12px;
+  color: var(--primary-hover);
+  margin-top: 6px;
+  min-height: 1em;
+}
+
+.field.has-error input,
+.field.has-error select {
+  border-color: var(--primary-hover);
+}
+
+/* Buttons / actions */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+button {
+  flex: 1;
+  padding: 14px;
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--primary-hover);
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.cancel-link {
+  color: var(--text-light);
+  text-decoration: none;
+}
+
+.cancel-link:hover {
+  color: var(--text-dark);
+}
+
+/* Page-level message bar */
+.form-message {
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.form-message.is-success {
+  background: #e6f4ea;
+  color: #1e7e34;
+  border: 1px solid #b7dfc2;
+}
+
+.form-message.is-error {
+  background: #fdeaea;
+  color: var(--primary-hover);
+  border: 1px solid #f5c6c6;
+}
+
+/* Landing module list */
+.module-list {
+  list-style: none;
+}
+
+.module-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.module-list a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.module-list a:hover {
+  text-decoration: underline;
+}
+
+section {
+  margin-bottom: 24px;
+}
+
+.page-footer {
+  margin-top: 24px;
+  text-align: center;
+}

@@ -3,36 +3,457 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AM Restaurant RMIS</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <title>AM Restaurant</title>
+  <style>
+    /* Palette shared with the rest of the RMIS (login.html / styles.css) */
+    :root {
+      --primary-color: #ff6b6b;
+      --primary-hover: #fa5252;
+      --bg-color: #f4f7f6;
+      --box-bg: #ffffff;
+      --text-dark: #333333;
+      --text-light: #888888;
+      --border: #eeeeee;
+      --radius: 4px; /* subtle rounding only */
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-dark);
+      line-height: 1.6;
+    }
+
+    a { color: var(--primary-color); }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      background-color: var(--box-bg);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .topbar .wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      padding-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-dark);
+      text-decoration: none;
+    }
+
+    .brand img {
+      height: 38px;
+      width: auto;
+      display: block;
+    }
+
+    .brand span { color: var(--primary-color); }
+
+    .nav a {
+      margin-left: 22px;
+      font-size: 14px;
+      color: var(--text-dark);
+      text-decoration: none;
+    }
+
+    .nav a:hover { color: var(--primary-color); }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-block;
+      padding: 12px 22px;
+      background-color: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+
+    .btn:hover { background-color: var(--primary-hover); }
+
+    .btn.secondary {
+      background-color: transparent;
+      color: var(--primary-color);
+      border: 1px solid var(--primary-color);
+    }
+
+    .btn.secondary:hover {
+      background-color: var(--primary-color);
+      color: #fff;
+    }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      background-color: #2b2b2b;
+      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/images/AM_dining1.jpg');
+      background-size: cover;
+      background-position: center;
+      color: #fff;
+    }
+
+    .hero .wrap {
+      padding-top: 96px;
+      padding-bottom: 96px;
+      max-width: 660px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 38px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .hero p {
+      font-size: 17px;
+      margin-bottom: 28px;
+      color: #f0f0f0;
+    }
+
+    .hero-actions a { margin: 0 6px; }
+
+    /* ---------- Sections ---------- */
+    section { padding: 64px 0; }
+
+    .section-title {
+      font-size: 26px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .section-sub {
+      text-align: center;
+      color: var(--text-light);
+      font-size: 15px;
+      margin-bottom: 40px;
+    }
+
+    /* About */
+    .about {
+      max-width: 760px;
+      margin: 0 auto;
+      text-align: center;
+      color: #555;
+      font-size: 16px;
+    }
+
+    /* Card grid (offerings) */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .card {
+      background-color: var(--box-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .card .photo {
+      height: 180px;
+      background-color: #e9e9e9;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .card .body { padding: 18px; }
+
+    .card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .card p {
+      font-size: 14px;
+      color: var(--text-light);
+    }
+
+    /* Photo gallery */
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .gallery img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    /* Mission & Vision */
+    .mv {
+      background-color: var(--box-bg);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mv-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    .mv-box {
+      background-color: var(--bg-color);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--primary-color);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+
+    .mv-box h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .mv-box p {
+      color: #555;
+      font-size: 15px;
+    }
+
+    /* Contact + employee access */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .panel {
+      background-color: var(--box-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+    }
+
+    .panel h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .panel p {
+      color: #555;
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
+    .panel .btn { margin-right: 10px; margin-bottom: 8px; }
+
+    .panel .note {
+      font-size: 13px;
+      color: var(--text-light);
+      margin-bottom: 0;
+    }
+
+    /* ---------- Footer ---------- */
+    .footer {
+      background-color: #2b2b2b;
+      color: #bbb;
+      text-align: center;
+      padding: 26px 0;
+      font-size: 13px;
+    }
+
+    .footer span { color: var(--primary-color); }
+
+    .footer a { color: #bbb; text-decoration: none; }
+    .footer a:hover { color: #fff; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .gallery { grid-template-columns: repeat(2, 1fr); }
+      .mv-grid { grid-template-columns: 1fr; }
+      .panels { grid-template-columns: 1fr; }
+      .nav { display: none; }
+      .hero h1 { font-size: 30px; }
+    }
+  </style>
 </head>
 <body>
-  <main class="container">
-    <header class="page-header">
-      <h1>AM Restaurant &mdash; RMIS</h1>
-      <p class="subtitle">Restaurant Management Information System</p>
-    </header>
 
-    <section>
-      <h2>Available</h2>
-      <ul class="module-list">
-        <li><a href="/register.html">Create User Account &mdash; Registration (SI-6)</a></li>
-        <li><a href="/login.html">Login (SI-7)</a></li>
-      </ul>
-    </section>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="/images/AM logo.jpg" alt="AM Restaurant logo">AM <span>Restaurant</span></a>
+      <nav class="nav">
+        <a href="#about">About</a>
+        <a href="#menu">Menu</a>
+        <a href="#mission">Mission &amp; Vision</a>
+        <a href="#contact">Contact</a>
+        <a href="/login.html">Employee Login</a>
+      </nav>
+    </div>
+  </header>
 
-    <section>
-      <h2>Planned</h2>
-      <ul class="module-list">
-        <li><span class="muted">Password Reset (SI-8)</span></li>
-        <li><span class="muted">Profile Management (SI-9)</span></li>
-        <li><span class="muted">Role &amp; Permissions (SI-10)</span></li>
-      </ul>
-    </section>
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="wrap">
+      <h1>Honest food, made with care.</h1>
+      <p>Welcome to AM Restaurant &mdash; a neighborhood kitchen serving freshly prepared all-day breakfasts and rice meals from quality ingredients.</p>
+      <div class="hero-actions">
+        <a class="btn" href="#menu">View Our Offerings</a>
+        <a class="btn secondary" href="#contact">Get in Touch</a>
+      </div>
+    </div>
+  </section>
 
-    <footer class="page-footer">
-      <p class="muted">ITISDEV S12 &middot; Group 4</p>
-    </footer>
-  </main>
+  <!-- About -->
+  <section id="about">
+    <div class="wrap">
+      <h2 class="section-title">About AM Restaurant</h2>
+      <p class="section-sub">Who we are</p>
+      <p class="about">
+        AM Restaurant is a family-run dining spot built on a simple idea: good food
+        should be made fresh, served warm, and shared often. From our open kitchen to
+        your table, every plate reflects our commitment to quality, consistency, and the
+        kind of hospitality that keeps people coming back.
+      </p>
+    </div>
+  </section>
+
+  <!-- Food offerings -->
+  <section id="menu" style="background-color: var(--bg-color);">
+    <div class="wrap">
+      <h2 class="section-title">Food Offerings</h2>
+      <p class="section-sub">A taste of what we serve</p>
+      <div class="grid">
+        <article class="card">
+          <div class="photo" style="background-image: url('/images/AM_breakfast1_bacon.jpg');"></div>
+          <div class="body">
+            <h3>Breakfast Silogs</h3>
+            <p>Classic all-day breakfast plates with garlic rice, egg, and your choice of viand.</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="photo" style="background-image: url('/images/AM_food1.jpg');"></div>
+          <div class="body">
+            <h3>Rice Meals &amp; Trays</h3>
+            <p>Filling rice meals and party trays, freshly cooked and ready to share.</p>
+          </div>
+        </article>
+        <article class="card">
+          <div class="photo" style="background-image: url('/images/AM_drink2.jpg');"></div>
+          <div class="body">
+            <h3>Signature Drinks</h3>
+            <p>House lattes &mdash; Sea Salt, Cocoa, and Honey Cream &mdash; to pair with any meal.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gallery -->
+  <section id="gallery">
+    <div class="wrap">
+      <h2 class="section-title">From Our Kitchen</h2>
+      <p class="section-sub">A look at what's on the table</p>
+      <div class="gallery">
+        <img src="/images/AM_breakfast4_bonelessbangus.jpg" alt="Boneless bangus silog">
+        <img src="/images/AM_breakfast9_beeftapa.jpg" alt="Beef tapa silog">
+        <img src="/images/AM_food2.jpg" alt="Beef with string beans">
+        <img src="/images/AM_food6.jpg" alt="Plated dishes spread">
+        <img src="/images/AM_food4.jpg" alt="Catering trays">
+        <img src="/images/AM_breakfast1_bacon.jpg" alt="Bacon and bangus breakfast plate">
+        <img src="/images/AM_drink2.jpg" alt="AM signature lattes">
+        <img src="/images/AM_dining2.jpg" alt="Dining table setup">
+      </div>
+    </div>
+  </section>
+
+  <!-- Mission & Vision -->
+  <section id="mission" class="mv">
+    <div class="wrap">
+      <h2 class="section-title">Our Mission &amp; Vision</h2>
+      <p class="section-sub">What drives us</p>
+      <div class="mv-grid">
+        <div class="mv-box">
+          <h3>Mission</h3>
+          <p>
+            To serve freshly prepared, affordable meals with consistent quality and
+            genuine hospitality &mdash; making every guest feel at home, one plate at a time.
+          </p>
+        </div>
+        <div class="mv-box">
+          <h3>Vision</h3>
+          <p>
+            To become the neighborhood's most trusted restaurant, known for honest food,
+            dependable service, and a team that takes pride in every dish we send out.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact + Employee access -->
+  <section id="contact">
+    <div class="wrap">
+      <h2 class="section-title">Get in Touch</h2>
+      <p class="section-sub">Questions, reservations, or feedback &mdash; we'd love to hear from you</p>
+      <div class="panels">
+        <div class="panel">
+          <h3>Contact Us</h3>
+          <p>Send us an email and our team will get back to you as soon as we can.</p>
+          <a class="btn" href="mailto:hello@amrestaurant.com?subject=Inquiry%20for%20AM%20Restaurant">Send an Email</a>
+        </div>
+        <div class="panel">
+          <h3>Employee Access</h3>
+          <p>For AM Restaurant staff only. Sign in to the dashboard or register a new employee account.</p>
+          <a class="btn" href="/login.html">Employee Login</a>
+          <a class="btn secondary" href="/register.html">Register</a>
+          <p class="note">Registration is restricted to authorized employees.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="wrap">
+      <p>&copy; 2026 <span>AM Restaurant</span>. All rights reserved.</p>
+      <p><a href="/modules.html">Staff / System Modules</a></p>
+    </div>
+  </footer>
+
 </body>
 </html>

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -53,10 +54,19 @@
     }
 
     .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       font-size: 20px;
       font-weight: 600;
       color: var(--text-dark);
       text-decoration: none;
+    }
+
+    .brand img {
+      height: 38px;
+      width: auto;
+      display: block;
     }
 
     .brand span { color: var(--primary-color); }
@@ -103,7 +113,7 @@
     .hero {
       position: relative;
       background-color: #2b2b2b;
-      background-image: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url('/images/hero.jpg');
+      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/images/AM_dining1.jpg');
       background-size: cover;
       background-position: center;
       color: #fff;
@@ -286,7 +296,7 @@
   <!-- Top bar -->
   <header class="topbar">
     <div class="wrap">
-      <a class="brand" href="#">AM <span>Restaurant</span></a>
+      <a class="brand" href="#"><img src="/images/AM logo.jpg" alt="AM Restaurant logo">AM <span>Restaurant</span></a>
       <nav class="nav">
         <a href="#about">About</a>
         <a href="#menu">Menu</a>
@@ -330,24 +340,24 @@
       <p class="section-sub">A taste of what we serve</p>
       <div class="grid">
         <article class="card">
-          <div class="photo" style="background-image: url('/images/dish-1.jpg');"></div>
+          <div class="photo" style="background-image: url('/images/AM_breakfast1_bacon.jpg');"></div>
           <div class="body">
-            <h3>Mains</h3>
-            <p>Hearty rice meals and house specialties cooked to order.</p>
+            <h3>Breakfast Silogs</h3>
+            <p>Classic all-day breakfast plates with garlic rice, egg, and your choice of viand.</p>
           </div>
         </article>
         <article class="card">
-          <div class="photo" style="background-image: url('/images/dish-2.jpg');"></div>
+          <div class="photo" style="background-image: url('/images/AM_food1.jpg');"></div>
           <div class="body">
-            <h3>Appetizers &amp; Sides</h3>
-            <p>Light starters and shareable plates to begin every meal.</p>
+            <h3>Rice Meals &amp; Trays</h3>
+            <p>Filling rice meals and party trays, freshly cooked and ready to share.</p>
           </div>
         </article>
         <article class="card">
-          <div class="photo" style="background-image: url('/images/dish-3.jpg');"></div>
+          <div class="photo" style="background-image: url('/images/AM_drink1.jpg');"></div>
           <div class="body">
-            <h3>Drinks &amp; Desserts</h3>
-            <p>Refreshing beverages and sweet finishes to round things off.</p>
+            <h3>Signature Drinks</h3>
+            <p>Refreshing house beverages to pair perfectly with every meal.</p>
           </div>
         </article>
       </div>

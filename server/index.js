@@ -94,10 +94,31 @@ function handleRegister(req, res) {
 }
 
 // Serve the static frontend from public/ (index.html, register.html, css, js).
-const CONTENT_TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript' };
+const CONTENT_TYPES = {
+  '.html': 'text/html',
+  '.css': 'text/css',
+  '.js': 'text/javascript',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+};
 
 function serveStatic(req, res) {
-  const urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+  const rawPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+
+  // Decode %20 and other escapes so filenames with spaces (e.g. "AM logo.jpg") resolve.
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(rawPath);
+  } catch {
+    res.writeHead(400);
+    return res.end('Bad request');
+  }
+
   const filePath = path.join(PUBLIC_DIR, path.normalize(urlPath));
 
   // Block path traversal outside public/.

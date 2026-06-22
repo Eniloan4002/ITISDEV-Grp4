@@ -1,148 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - AM Restaurant RMIS</title>
-    <style>
-        :root {
-            --primary-color: #ff6b6b;
-            --primary-hover: #fa5252;
-            --bg-color: #f4f7f6;
-            --box-bg: #ffffff;
-            --text-dark: #333333;
-            --text-light: #888888;
-            --input-border: #dddddd;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .login-container {
-            background-color: var(--box-bg);
-            width: 100%;
-            max-width: 400px;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-        }
-
-        .logo-area {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .logo-area svg {
-            width: 60px;
-            height: 60px;
-            fill: var(--primary-color);
-            margin-bottom: 10px;
-        }
-
-        .logo-area h1 {
-            color: var(--text-dark);
-            font-size: 24px;
-            font-weight: 600;
-        }
-
-        .logo-area p {
-            color: var(--text-light);
-            font-size: 14px;
-            margin-top: 5px;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text-dark);
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid var(--input-border);
-            border-radius: 8px;
-            font-size: 15px;
-            transition: border-color 0.3s ease;
-            outline: none;
-        }
-
-        .input-group input:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
-        }
-
-        .options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-
-
-
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .login-btn:hover {
-            background-color: var(--primary-hover);
-        }
-
-
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
+  <main class="container">
+    <header class="page-header">
+      <h1>AM Restaurant</h1>
+      <p class="subtitle">Enter your Employee ID to start your shift.</p>
+    </header>
 
-    <div class="login-container">
-        <div class="logo-area">
-            <span class="pos-badge">SYSTEM TERMINAL</span>
-            <h1>AM Restaurant</h1>
-            <p>Enter your Employee ID to start shift</p>
-        </div>
+    <!-- Page-level message (error or notice). Hidden until set. -->
+    <p id="form-message" class="form-message" role="alert" hidden></p>
 
-        <form action="#" method="POST">
-            <div class="input-group">
-                <label for="employee-id">Employee ID or Email</label>
-                <input type="text" id="employee-id" name="employee-id" placeholder="" required autofocus>
-            </div>
+    <form id="login-form" action="#" method="POST" novalidate>
+      <div class="field">
+        <label for="employee-id">Employee ID or Email</label>
+        <input type="text" id="employee-id" name="employee-id" autocomplete="off" required autofocus>
+        <span class="field-error" id="error-employee-id"></span>
+      </div>
 
-            <div class="input-group">
-                <label for="password">PIN / Password</label>
-                <input type="password" id="password" name="password" placeholder="" required>
-            </div>
+      <div class="field">
+        <label for="password">PIN / Password</label>
+        <input type="password" id="password" name="password" autocomplete="off" required>
+        <span class="field-error" id="error-password"></span>
+      </div>
 
-
-            <button type="submit" class="login-btn">Login</button>
-        </form>
-    </div>
-
+      <div class="actions">
+        <button type="submit" id="submit-btn">Login</button>
+        <a href="/index.html" class="cancel-link">Cancel</a>
+      </div>
+    </form>
+  </main>
 </body>
 </html>

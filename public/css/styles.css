@@ -1,7 +1,7 @@
 /* Shared RMIS stylesheet.
-   Theme copied from the login mockup (login.html) so all pages share one look.
-   NOTE: login.html still carries its own inline copy of this theme "for now" —
-   the team can later switch it to this shared stylesheet to remove duplication. */
+   Theme copied from the login mockup so all pages share one look.
+   Both login.html and register.html now use this shared stylesheet — the inline
+   duplicate that login.html used to carry has been removed. */
 
 :root {
   --primary-color: #ff6b6b;

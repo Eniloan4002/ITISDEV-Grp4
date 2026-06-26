@@ -186,6 +186,61 @@ function handleMe(req, res) {
   return sendJson(res, 200, { fullName: u.full_name, email: u.email, role: u.role });
 }
 
+// GET /api/profile — return the logged-in user's editable profile (SI-9).
+function handleGetProfile(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  const u = dbApi.findUserById(s.userId);
+  if (!u) return sendJson(res, 401, { message: 'Not authenticated.' });
+  return sendJson(res, 200, {
+    fullName: u.full_name,
+    email: u.email,
+    role: u.role,
+    contactNumber: u.contact_number,
+  });
+}
+
+// POST /api/profile — update display name + contact number only (SI-9).
+// CRITICAL (AC): role and email are READ-ONLY — never read or write them from
+// the request body, even if the client sends them.
+const CONTACT_RE = /^[0-9+\-()\s]{7,20}$/;
+function handleUpdateProfile(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+
+  let raw = '';
+  req.on('data', (chunk) => { raw += chunk; });
+  req.on('end', () => {
+    let data;
+    try {
+      data = JSON.parse(raw || '{}');
+    } catch {
+      return sendJson(res, 400, { message: 'Invalid request.' });
+    }
+
+    const errors = {};
+    if (!data.fullName || !data.fullName.trim()) {
+      errors.fullName = 'Display name is required.';
+    }
+    if (!data.contactNumber || !data.contactNumber.trim()) {
+      errors.contactNumber = 'Contact number is required.';
+    } else if (!CONTACT_RE.test(data.contactNumber.trim())) {
+      errors.contactNumber = 'Enter a valid contact number.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
+    }
+
+    // Only fullName + contactNumber are ever written. role/email are ignored.
+    dbApi.updateProfile(s.userId, {
+      fullName: data.fullName.trim(),
+      contactNumber: data.contactNumber.trim(),
+    });
+    return sendJson(res, 200, { message: 'Profile updated.' });
+  });
+}
+
 // Serve the static frontend from public/ (index.html, register.html, css, js).
 const CONTENT_TYPES = {
   '.html': 'text/html',
@@ -268,6 +323,12 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'GET' && req.url === '/api/me') {
     return handleMe(req, res);
+  }
+  if (req.method === 'GET' && req.url === '/api/profile') {
+    return handleGetProfile(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/profile') {
+    return handleUpdateProfile(req, res);
   }
   if (req.method === 'GET') {
     // SI-10 — server-side RBAC gate for protected static pages (blocks direct-URL access).

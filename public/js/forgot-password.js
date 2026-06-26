@@ -1,11 +1,14 @@
-// Minimal vanilla JS for the Create User form (SI-6).
-// No framework, no animation — it just talks to the REST API and shows results.
+// Minimal vanilla JS for the Forgot Password form (SI-8).
+// Posts an email to /api/password-reset/request. The server always replies with
+// a generic message; for a registered email it also returns a `resetLink` that we
+// surface on-screen (MVP delivery — normally this would arrive by email).
 
-const form = document.getElementById('register-form');
+const form = document.getElementById('forgot-form');
 const submitBtn = document.getElementById('submit-btn');
 const formMessage = document.getElementById('form-message');
+const resetLinkBox = document.getElementById('reset-link-box');
 
-const FIELDS = ['fullName', 'email', 'password', 'role'];
+const FIELDS = ['email'];
 
 // Clear all previous error/message state before a new submit.
 function clearErrors() {
@@ -34,28 +37,17 @@ function showMessage(text, type) {
   formMessage.hidden = false;
 }
 
-// "Show password" toggle — flip the password input between hidden and visible.
-const togglePassword = document.getElementById('toggle-password');
-if (togglePassword) {
-  togglePassword.addEventListener('change', () => {
-    document.getElementById('password').type = togglePassword.checked ? 'text' : 'password';
-  });
-}
-
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   clearErrors();
+  resetLinkBox.hidden = true;
+  resetLinkBox.innerHTML = '';
 
-  const payload = {
-    fullName: form.fullName.value,
-    email: form.email.value,
-    password: form.password.value,
-    role: form.role.value,
-  };
+  const payload = { email: form.email.value };
 
   submitBtn.disabled = true;
   try {
-    const res = await fetch('/api/register', {
+    const res = await fetch('/api/password-reset/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -63,13 +55,18 @@ form.addEventListener('submit', async (event) => {
     const data = await res.json();
 
     if (res.ok) {
-      // Success (AC1): account saved + welcome email triggered.
+      // Generic success — same whether or not the email was registered.
       showMessage(data.message, 'success');
-      form.reset();
+      // Only a registered email returns a link; reveal it when present.
+      if (data.resetLink) {
+        resetLinkBox.innerHTML =
+          '<a href="' + data.resetLink + '">Click here to reset your password</a>' +
+          '<p class="field-hint">This link normally arrives by email. For this demo it is shown here.</p>';
+        resetLinkBox.hidden = false;
+      }
     } else {
-      // Validation / duplicate email (AC2) or other rejection.
       if (data.errors) showFieldErrors(data.errors);
-      showMessage(data.message || 'Could not create the account.', 'error');
+      showMessage(data.message || 'Could not process the request.', 'error');
     }
   } catch (err) {
     showMessage('Network error. Please try again.', 'error');

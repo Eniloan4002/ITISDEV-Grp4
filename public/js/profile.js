@@ -1,11 +1,13 @@
-// Minimal vanilla JS for the Create User form (SI-6).
-// No framework, no animation — it just talks to the REST API and shows results.
+// Minimal vanilla JS for the My Profile form (SI-9).
+// Loads the current profile, lets the user edit display name + contact number.
+// Email and role are read-only — never sent back to the server.
 
-const form = document.getElementById('register-form');
+const form = document.getElementById('profile-form');
 const submitBtn = document.getElementById('submit-btn');
 const formMessage = document.getElementById('form-message');
 
-const FIELDS = ['fullName', 'email', 'password', 'role'];
+// Only the editable fields have inline error slots.
+const FIELDS = ['fullName', 'contactNumber'];
 
 // Clear all previous error/message state before a new submit.
 function clearErrors() {
@@ -18,7 +20,7 @@ function clearErrors() {
   }
 }
 
-// Show field-level errors returned by the server (or client-side checks).
+// Show field-level errors returned by the server.
 function showFieldErrors(errors) {
   for (const [field, message] of Object.entries(errors)) {
     const errorEl = document.getElementById(`error-${field}`);
@@ -34,28 +36,37 @@ function showMessage(text, type) {
   formMessage.hidden = false;
 }
 
-// "Show password" toggle — flip the password input between hidden and visible.
-const togglePassword = document.getElementById('toggle-password');
-if (togglePassword) {
-  togglePassword.addEventListener('change', () => {
-    document.getElementById('password').type = togglePassword.checked ? 'text' : 'password';
-  });
-}
+// On load: fetch the current profile and populate the four fields.
+(async () => {
+  try {
+    const res = await fetch('/api/profile');
+    if (res.status === 401) {
+      window.location = '/login';
+      return;
+    }
+    const data = await res.json();
+    form.fullName.value = data.fullName || '';
+    form.contactNumber.value = data.contactNumber || '';
+    form.email.value = data.email || '';
+    form.role.value = data.role || '';
+  } catch (err) {
+    showMessage('Could not load your profile. Please refresh.', 'error');
+  }
+})();
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   clearErrors();
 
+  // Only the editable fields are sent — email/role are read-only (AC).
   const payload = {
     fullName: form.fullName.value,
-    email: form.email.value,
-    password: form.password.value,
-    role: form.role.value,
+    contactNumber: form.contactNumber.value,
   };
 
   submitBtn.disabled = true;
   try {
-    const res = await fetch('/api/register', {
+    const res = await fetch('/api/profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -63,13 +74,10 @@ form.addEventListener('submit', async (event) => {
     const data = await res.json();
 
     if (res.ok) {
-      // Success (AC1): account saved + welcome email triggered.
       showMessage(data.message, 'success');
-      form.reset();
     } else {
-      // Validation / duplicate email (AC2) or other rejection.
       if (data.errors) showFieldErrors(data.errors);
-      showMessage(data.message || 'Could not create the account.', 'error');
+      showMessage(data.message || 'Could not update your profile.', 'error');
     }
   } catch (err) {
     showMessage('Network error. Please try again.', 'error');

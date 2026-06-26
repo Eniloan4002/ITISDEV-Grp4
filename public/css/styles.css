@@ -106,6 +106,26 @@ select:focus {
   margin-top: 6px;
 }
 
+/* "Show password" toggle — keep the checkbox small and inline (the global
+   input rule above stretches inputs to full width, so reset it here). */
+.show-password {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-light);
+  cursor: pointer;
+}
+
+.show-password input {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+}
+
 .field-error {
   font-size: 12px;
   color: var(--primary-hover);

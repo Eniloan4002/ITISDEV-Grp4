@@ -31,8 +31,11 @@
 
       <div class="field">
         <label for="password">Temporary Password</label>
-        <input type="text" id="password" name="password" autocomplete="off" required>
+        <input type="password" id="password" name="password" autocomplete="off" required>
         <span class="field-hint">Minimum 8 characters. The staff member changes this on activation.</span>
+        <label class="field show-password" for="toggle-password">
+          <input type="checkbox" id="toggle-password"> Show password
+        </label>
         <span class="field-error" id="error-password"></span>
       </div>
 
@@ -52,7 +55,7 @@
 
       <div class="actions">
         <button type="submit" id="submit-btn">Create Account</button>
-        <a href="/index.html" class="cancel-link">Cancel</a>
+        <a href="/" class="cancel-link">Cancel</a>
       </div>
     </form>
   </main>

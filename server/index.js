@@ -14,11 +14,16 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const dbApi = require('./db');
-const { hashPassword } = require('./password');
+const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+
+// In-memory session store (SI-7). token -> { userId, email, role }.
+// Acceptable MVP: a server restart just forces re-login; user data persists in SQLite.
+const sessions = new Map();
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -92,6 +97,82 @@ function handleRegister(req, res) {
   });
 }
 
+// Parse the Cookie header into a plain object (SI-7). Returns {} if absent.
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  if (!header) return {};
+  const cookies = {};
+  for (const pair of header.split('; ')) {
+    const idx = pair.indexOf('=');
+    if (idx === -1) continue;
+    cookies[pair.slice(0, idx)] = pair.slice(idx + 1);
+  }
+  return cookies;
+}
+
+// Resolve the current session from the `sid` cookie, or null. Reused by later phases.
+function getSession(req) {
+  const token = parseCookies(req).sid;
+  if (!token) return null;
+  return sessions.get(token) || null;
+}
+
+// POST /api/login — authenticate a staff member and start a session (SI-7).
+function handleLogin(req, res) {
+  let raw = '';
+  req.on('data', (chunk) => { raw += chunk; });
+  req.on('end', () => {
+    let data;
+    try {
+      data = JSON.parse(raw || '{}');
+    } catch {
+      return sendJson(res, 400, { message: 'Invalid request.' });
+    }
+
+    if (!data.email || !data.password) {
+      return sendJson(res, 400, { message: 'Email and password are required.' });
+    }
+
+    const email = data.email.trim().toLowerCase();
+    const user = dbApi.findUserByEmail(email);
+
+    // Generic message — never reveal which part failed (AC requirement).
+    if (!user || !verifyPassword(data.password, user.password_hash)) {
+      return sendJson(res, 401, { message: 'Invalid email or password.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, { userId: user.id, email: user.email, role: user.role });
+
+    // Set the session cookie AND a JSON body, so we write the head manually.
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Set-Cookie': 'sid=' + token + '; HttpOnly; Path=/; Max-Age=86400',
+    });
+    res.end(JSON.stringify({ redirect: '/dashboard.html', role: user.role }));
+  });
+}
+
+// POST /api/logout — end the current session and clear the cookie (SI-7).
+function handleLogout(req, res) {
+  const token = parseCookies(req).sid;
+  if (token) sessions.delete(token);
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Set-Cookie': 'sid=; HttpOnly; Path=/; Max-Age=0',
+  });
+  res.end(JSON.stringify({ message: 'Logged out.' }));
+}
+
+// GET /api/me — return the logged-in user's display info, or 401 (SI-7).
+function handleMe(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  const u = dbApi.findUserById(s.userId);
+  if (!u) return sendJson(res, 401, { message: 'Not authenticated.' });
+  return sendJson(res, 200, { fullName: u.full_name, email: u.email, role: u.role });
+}
+
 // Serve the static frontend from public/ (index.html, register.html, css, js).
 const CONTENT_TYPES = {
   '.html': 'text/html',
@@ -140,6 +221,15 @@ function serveStatic(req, res) {
 const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/register') {
     return handleRegister(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/login') {
+    return handleLogin(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/logout') {
+    return handleLogout(req, res);
+  }
+  if (req.method === 'GET' && req.url === '/api/me') {
+    return handleMe(req, res);
   }
   if (req.method === 'GET') {
     return serveStatic(req, res);

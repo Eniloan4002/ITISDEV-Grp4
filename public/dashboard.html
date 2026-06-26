@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="container">
+    <header class="page-header">
+      <h1>AM Restaurant &mdash; RMIS</h1>
+      <p class="subtitle" id="greeting">Loading&hellip;</p>
+    </header>
+
+    <section>
+      <h2>Modules</h2>
+      <ul class="module-list">
+        <li><a href="/register.html">Create User Account &mdash; Registration (SI-6)</a></li>
+        <li><a href="/login.html">Login (SI-7)</a></li>
+      </ul>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="logout-btn">Logout</button>
+    </div>
+  </main>
+
+  <script>
+    // Role-aware landing page (SI-7). Role-based link hiding lands in Phase 4.
+    (async () => {
+      try {
+        const res = await fetch('/api/me');
+        if (res.status === 401) {
+          window.location = '/login.html';
+          return;
+        }
+        const data = await res.json();
+        document.getElementById('greeting').textContent =
+          `Welcome, ${data.fullName} (${data.role})`;
+      } catch (err) {
+        window.location = '/login.html';
+      }
+    })();
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } finally {
+        window.location = '/login.html';
+      }
+    });
+  </script>
+</body>
+</html>

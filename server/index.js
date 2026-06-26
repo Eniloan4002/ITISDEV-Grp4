@@ -21,6 +21,19 @@ const { hashPassword, verifyPassword } = require('./password');
 const PORT = 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
+// SI-10 — which role may access which protected pages. '*' = all pages.
+const ROLE_PAGES = {
+  Admin:   ['*'],
+  Manager: ['/dashboard.html', '/profile.html', '/modules.html'],
+  Cashier: ['/dashboard.html', '/profile.html'],
+  Staff:   ['/dashboard.html', '/profile.html'],
+};
+// Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
+const PROTECTED_PAGES = {
+  '/register.html': ['Admin'],          // "Create User" — admin only
+  '/admin-settings.html': ['Admin'],    // admin-only stub
+};
+
 // In-memory session store (SI-7). token -> { userId, email, role }.
 // Acceptable MVP: a server restart just forces re-login; user data persists in SQLite.
 const sessions = new Map();
@@ -218,6 +231,31 @@ function serveStatic(req, res) {
   });
 }
 
+// SI-10 — serve the 403 page for an authenticated-but-unauthorized request.
+function serve403(res) {
+  fs.readFile(path.join(PUBLIC_DIR, '403.html'), (err, content) => {
+    if (err) {
+      res.writeHead(403, { 'Content-Type': 'text/plain' });
+      return res.end('403 Unauthorized');
+    }
+    res.writeHead(403, { 'Content-Type': 'text/html' });
+    res.end(content);
+  });
+}
+
+// Bootstrap — create a default Admin so RBAC can be demoed. Idempotent.
+const SEED_EMAIL = 'admin@amrestaurant.local';
+function ensureSeedAdmin() {
+  if (dbApi.findUserByEmail(SEED_EMAIL)) return;
+  dbApi.createUser({
+    fullName: 'Default Admin',
+    email: SEED_EMAIL,
+    passwordHash: hashPassword('admin1234'),
+    role: 'Admin',
+  });
+  console.log('[seed] Default admin created: admin@amrestaurant.local / admin1234 (change after first login)');
+}
+
 const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/register') {
     return handleRegister(req, res);
@@ -232,11 +270,31 @@ const server = http.createServer((req, res) => {
     return handleMe(req, res);
   }
   if (req.method === 'GET') {
+    // SI-10 — server-side RBAC gate for protected static pages (blocks direct-URL access).
+    let urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+    try {
+      urlPath = decodeURIComponent(urlPath);
+    } catch {
+      // Leave urlPath as the raw split; serveStatic re-decodes and handles bad input.
+    }
+    const allowedRoles = PROTECTED_PAGES[urlPath];
+    if (allowedRoles) {
+      const s = getSession(req);
+      if (!s) {
+        res.writeHead(302, { Location: '/login.html' });
+        return res.end();
+      }
+      if (!allowedRoles.includes(s.role)) {
+        return serve403(res);
+      }
+    }
     return serveStatic(req, res);
   }
   res.writeHead(404);
   res.end('Not found');
 });
+
+ensureSeedAdmin();
 
 server.listen(PORT, () => {
   console.log(`RMIS Registration running at http://localhost:${PORT}`);

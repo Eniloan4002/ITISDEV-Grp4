@@ -1,11 +1,11 @@
-// Minimal vanilla JS for the Create User form (SI-6).
+// Minimal vanilla JS for the Login form (SI-7).
 // No framework, no animation — it just talks to the REST API and shows results.
 
-const form = document.getElementById('register-form');
+const form = document.getElementById('login-form');
 const submitBtn = document.getElementById('submit-btn');
 const formMessage = document.getElementById('form-message');
 
-const FIELDS = ['fullName', 'email', 'password', 'role'];
+const FIELDS = ['email', 'password'];
 
 // Clear all previous error/message state before a new submit.
 function clearErrors() {
@@ -18,7 +18,7 @@ function clearErrors() {
   }
 }
 
-// Show field-level errors returned by the server (or client-side checks).
+// Show field-level errors (kept for parity with register.js; login uses a top-level message).
 function showFieldErrors(errors) {
   for (const [field, message] of Object.entries(errors)) {
     const errorEl = document.getElementById(`error-${field}`);
@@ -47,15 +47,13 @@ form.addEventListener('submit', async (event) => {
   clearErrors();
 
   const payload = {
-    fullName: form.fullName.value,
     email: form.email.value,
     password: form.password.value,
-    role: form.role.value,
   };
 
   submitBtn.disabled = true;
   try {
-    const res = await fetch('/api/register', {
+    const res = await fetch('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -63,13 +61,11 @@ form.addEventListener('submit', async (event) => {
     const data = await res.json();
 
     if (res.ok) {
-      // Success (AC1): account saved + welcome email triggered.
-      showMessage(data.message, 'success');
-      form.reset();
+      // Success (AC): authenticated, redirect to the role dashboard.
+      window.location = data.redirect || '/dashboard';
     } else {
-      // Validation / duplicate email (AC2) or other rejection.
-      if (data.errors) showFieldErrors(data.errors);
-      showMessage(data.message || 'Could not create the account.', 'error');
+      // Generic rejection — login returns a top-level message, not per-field errors.
+      showMessage(data.message || 'Could not log in.', 'error');
     }
   } catch (err) {
     showMessage('Network error. Please try again.', 'error');

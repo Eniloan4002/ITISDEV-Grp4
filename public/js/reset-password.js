@@ -1,11 +1,16 @@
-// Minimal vanilla JS for the Create User form (SI-6).
-// No framework, no animation — it just talks to the REST API and shows results.
+// Minimal vanilla JS for the Reset Password form (SI-8).
+// The single-use token comes from the URL (?token=...). On submit we post the
+// token + new password to /api/password-reset/confirm. The server validates the
+// token (existence, unused, not expired) and the password strength server-side.
 
-const form = document.getElementById('register-form');
+const form = document.getElementById('reset-form');
 const submitBtn = document.getElementById('submit-btn');
 const formMessage = document.getElementById('form-message');
 
-const FIELDS = ['fullName', 'email', 'password', 'role'];
+const FIELDS = ['newPassword'];
+
+// Token from the query string. Disable the form if it's missing.
+const token = new URLSearchParams(location.search).get('token');
 
 // Clear all previous error/message state before a new submit.
 function clearErrors() {
@@ -29,33 +34,26 @@ function showFieldErrors(errors) {
 }
 
 function showMessage(text, type) {
-  formMessage.textContent = text;
+  formMessage.innerHTML = text;
   formMessage.className = `form-message is-${type}`;
   formMessage.hidden = false;
 }
 
-// "Show password" toggle — flip the password input between hidden and visible.
-const togglePassword = document.getElementById('toggle-password');
-if (togglePassword) {
-  togglePassword.addEventListener('change', () => {
-    document.getElementById('password').type = togglePassword.checked ? 'text' : 'password';
-  });
+// Guard: no token in the URL means the link is unusable.
+if (!token) {
+  showMessage('Invalid reset link.', 'error');
+  submitBtn.disabled = true;
 }
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   clearErrors();
 
-  const payload = {
-    fullName: form.fullName.value,
-    email: form.email.value,
-    password: form.password.value,
-    role: form.role.value,
-  };
+  const payload = { token, newPassword: form.newPassword.value };
 
   submitBtn.disabled = true;
   try {
-    const res = await fetch('/api/register', {
+    const res = await fetch('/api/password-reset/confirm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -63,17 +61,17 @@ form.addEventListener('submit', async (event) => {
     const data = await res.json();
 
     if (res.ok) {
-      // Success (AC1): account saved + welcome email triggered.
-      showMessage(data.message, 'success');
+      // Success: invite the user to log in with their new password.
+      showMessage(data.message + ' <a href="/login">Go to login</a>', 'success');
       form.reset();
+      submitBtn.disabled = true;
     } else {
-      // Validation / duplicate email (AC2) or other rejection.
       if (data.errors) showFieldErrors(data.errors);
-      showMessage(data.message || 'Could not create the account.', 'error');
+      showMessage(data.message || 'Could not reset the password.', 'error');
+      submitBtn.disabled = false;
     }
   } catch (err) {
     showMessage('Network error. Please try again.', 'error');
-  } finally {
     submitBtn.disabled = false;
   }
 });

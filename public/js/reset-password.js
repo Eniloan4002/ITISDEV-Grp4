@@ -62,7 +62,7 @@ form.addEventListener('submit', async (event) => {
 
     if (res.ok) {
       // Success: invite the user to log in with their new password.
-      showMessage(data.message + ' <a href="/login.html">Go to login</a>', 'success');
+      showMessage(data.message + ' <a href="/login">Go to login</a>', 'success');
       form.reset();
       submitBtn.disabled = true;
     } else {

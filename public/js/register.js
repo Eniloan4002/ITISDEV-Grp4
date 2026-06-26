@@ -34,6 +34,14 @@ function showMessage(text, type) {
   formMessage.hidden = false;
 }
 
+// "Show password" toggle — flip the password input between hidden and visible.
+const togglePassword = document.getElementById('toggle-password');
+if (togglePassword) {
+  togglePassword.addEventListener('change', () => {
+    document.getElementById('password').type = togglePassword.checked ? 'text' : 'password';
+  });
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   clearErrors();

@@ -15,6 +15,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const dbApi = require('./db');
+const { hashPassword } = require('./password');
 
 const PORT = 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -74,12 +75,11 @@ function handleRegister(req, res) {
       });
     }
 
-    // AC1 — save the new account...
-    // passwordHash carries plaintext for now; Phase 2 will hash before storing.
+    // AC1 — save the new account with a hashed password (never plaintext).
     dbApi.createUser({
       fullName: data.fullName.trim(),
       email,
-      passwordHash: data.password,
+      passwordHash: hashPassword(data.password),
       role: data.role,
     });
 

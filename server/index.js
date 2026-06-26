@@ -241,6 +241,84 @@ function handleUpdateProfile(req, res) {
   });
 }
 
+// POST /api/password-reset/request — issue a time-limited reset token (SI-8).
+// Delivery (MVP, no SMTP): the link is logged to the server console AND returned
+// in the response so the page can show it. The response message is ALWAYS generic
+// so the endpoint never reveals whether an email is registered.
+function handleResetRequest(req, res) {
+  let raw = '';
+  req.on('data', (chunk) => { raw += chunk; });
+  req.on('end', () => {
+    let data;
+    try {
+      data = JSON.parse(raw || '{}');
+    } catch {
+      return sendJson(res, 400, { message: 'Invalid request.' });
+    }
+
+    const email = (data.email || '').trim().toLowerCase();
+    const user = email ? dbApi.findUserByEmail(email) : null;
+
+    // Only generate a token if the email actually exists. For unknown emails we
+    // fall through to the same generic response with NO resetLink (no existence leak).
+    if (user) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour, ms epoch (matches integer column).
+      dbApi.createReset(token, user.id, expiresAt);
+      const resetPath = '/reset-password.html?token=' + token;
+      console.log('[reset] Password reset link for ' + email + ': http://localhost:3000' + resetPath);
+      return sendJson(res, 200, {
+        message: 'If that email is registered, a reset link has been generated below.',
+        resetLink: resetPath,
+      });
+    }
+
+    return sendJson(res, 200, {
+      message: 'If that email is registered, a reset link has been generated below.',
+    });
+  });
+}
+
+// POST /api/password-reset/confirm — consume a token and set a new password (SI-8).
+// Token is validated SERVER-SIDE: must exist, be unused, and not expired. Single-use.
+function handleResetConfirm(req, res) {
+  let raw = '';
+  req.on('data', (chunk) => { raw += chunk; });
+  req.on('end', () => {
+    let data;
+    try {
+      data = JSON.parse(raw || '{}');
+    } catch {
+      return sendJson(res, 400, { message: 'Invalid request.' });
+    }
+
+    const token = data.token;
+    const newPassword = data.newPassword;
+
+    if (!token) {
+      return sendJson(res, 400, { message: 'Invalid or missing reset token.' });
+    }
+
+    const row = dbApi.getReset(token);
+    if (!row || row.used || row.expires_at < Date.now()) {
+      return sendJson(res, 400, { message: 'Reset link is invalid or expired.' });
+    }
+
+    // AC — new password must be at least 8 chars and alphanumeric (letters + numbers).
+    const p = newPassword || '';
+    if (p.length < 8 || !/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) {
+      return sendJson(res, 400, {
+        message: 'Password must be at least 8 characters and contain letters and numbers.',
+        errors: { newPassword: 'At least 8 characters, letters and numbers.' },
+      });
+    }
+
+    dbApi.updatePassword(row.user_id, hashPassword(newPassword));
+    dbApi.markResetUsed(token); // single-use: the link cannot be replayed.
+    return sendJson(res, 200, { message: 'Password updated. You can now log in.' });
+  });
+}
+
 // Serve the static frontend from public/ (index.html, register.html, css, js).
 const CONTENT_TYPES = {
   '.html': 'text/html',
@@ -329,6 +407,12 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'POST' && req.url === '/api/profile') {
     return handleUpdateProfile(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/password-reset/request') {
+    return handleResetRequest(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
+    return handleResetConfirm(req, res);
   }
   if (req.method === 'GET') {
     // SI-10 — server-side RBAC gate for protected static pages (blocks direct-URL access).

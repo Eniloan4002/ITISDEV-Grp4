@@ -7,19 +7,17 @@
 // Password Reset (SI-8), Profile (SI-9), and Roles & Permissions (SI-10) are
 // separate stories owned by other teammates — they are intentionally not here.
 //
-// PERSISTENCE: accounts live in an in-memory array, so they are LOST when the
-// server restarts. This is a deliberate placeholder, NOT a database decision.
-// Replace `accounts` with whatever database the team agrees on later.
+// PERSISTENCE: accounts are stored in a file-backed SQLite database via Node's
+// built-in `node:sqlite` (see server/db.js), so they survive server restarts.
+// Still zero external dependencies — DatabaseSync ships with Node.
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const dbApi = require('./db');
 
 const PORT = 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-
-// In-memory store (placeholder — see note above). Shape: { fullName, email, password, role }
-const accounts = [];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -69,7 +67,7 @@ function handleRegister(req, res) {
     const email = data.email.trim().toLowerCase();
 
     // AC2 — reject a duplicate email with a clear message.
-    if (accounts.some((a) => a.email === email)) {
+    if (dbApi.findUserByEmail(email)) {
       return sendJson(res, 409, {
         message: 'Email already registered.',
         errors: { email: 'Email already registered.' },
@@ -77,10 +75,11 @@ function handleRegister(req, res) {
     }
 
     // AC1 — save the new account...
-    accounts.push({
+    // passwordHash carries plaintext for now; Phase 2 will hash before storing.
+    dbApi.createUser({
       fullName: data.fullName.trim(),
       email,
-      password: data.password, // TODO: hash before real use (a security task, out of SI-6 scope).
+      passwordHash: data.password,
       role: data.role,
     });
 

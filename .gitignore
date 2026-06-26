@@ -9,6 +9,10 @@ node_modules/
 .DS_Store
 *.log
 
+# SQLite database file (data/ dir stays tracked via .gitkeep)
+data/*.db
+data/*.db-*
+
 # NOTE: removelater/ holds context PDFs + Jira screenshots only.
 # It is intentionally NOT committed. Delete once the team no longer needs it.
 removelater/

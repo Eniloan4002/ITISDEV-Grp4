@@ -34,6 +34,14 @@ function showMessage(text, type) {
   formMessage.hidden = false;
 }
 
+// "Show password" toggle — flip the password input between hidden and visible.
+const togglePassword = document.getElementById('toggle-password');
+if (togglePassword) {
+  togglePassword.addEventListener('change', () => {
+    document.getElementById('password').type = togglePassword.checked ? 'text' : 'password';
+  });
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   clearErrors();
@@ -54,7 +62,7 @@ form.addEventListener('submit', async (event) => {
 
     if (res.ok) {
       // Success (AC): authenticated, redirect to the role dashboard.
-      window.location = data.redirect || '/dashboard.html';
+      window.location = data.redirect || '/dashboard';
     } else {
       // Generic rejection — login returns a top-level message, not per-field errors.
       showMessage(data.message || 'Could not log in.', 'error');

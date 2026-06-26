@@ -26,15 +26,18 @@
       <div class="field">
         <label for="password">Password</label>
         <input type="password" id="password" name="password" autocomplete="off" required>
+        <label class="field show-password" for="toggle-password">
+          <input type="checkbox" id="toggle-password"> Show password
+        </label>
         <span class="field-error" id="error-password"></span>
       </div>
 
       <div class="actions">
         <button type="submit" id="submit-btn">Login</button>
-        <a href="/index.html" class="cancel-link">Cancel</a>
+        <a href="/" class="cancel-link">Cancel</a>
       </div>
 
-      <p class="field-hint"><a href="/forgot-password.html">Forgot Password?</a></p>
+      <p class="field-hint"><a href="/forgot-password">Forgot Password?</a></p>
     </form>
   </main>
 

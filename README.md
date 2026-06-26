@@ -33,13 +33,16 @@ The SQLite file `data/rmis.db` is git-ignored; delete it to reset all data.
 
 ## Sprint 1 features & endpoints
 
-| Story | Feature | Pages | API |
-|-------|---------|-------|-----|
-| SI-6  | Registration (Create User) | `register.html` (Admin-only) | `POST /api/register` |
-| SI-7  | Login / sessions | `login.html`, `dashboard.html` | `POST /api/login`, `POST /api/logout`, `GET /api/me` |
-| SI-8  | Password Reset | `forgot-password.html`, `reset-password.html` | `POST /api/password-reset/request`, `POST /api/password-reset/confirm` |
-| SI-9  | Profile Management | `profile.html` | `GET /api/profile`, `POST /api/profile` |
-| SI-10 | Roles & Permissions (RBAC) | `403.html`, `admin-settings.html` | enforced server-side on protected pages |
+Page URLs are clean (no `.html`); the files live in `public/pages/` and the
+server resolves `/login` → `public/pages/login.html`, etc.
+
+| Story | Feature | Page URLs | API |
+|-------|---------|-----------|-----|
+| SI-6  | Registration (Create User) | `/register` (Admin-only) | `POST /api/register` |
+| SI-7  | Login / sessions | `/login`, `/dashboard` | `POST /api/login`, `POST /api/logout`, `GET /api/me` |
+| SI-8  | Password Reset | `/forgot-password`, `/reset-password` | `POST /api/password-reset/request`, `POST /api/password-reset/confirm` |
+| SI-9  | Profile Management | `/profile` | `GET /api/profile`, `POST /api/profile` |
+| SI-10 | Roles & Permissions (RBAC) | `/403`, `/admin-settings` | enforced server-side on protected pages |
 
 Roles: **Admin, Manager, Cashier, Staff**.
 
@@ -59,7 +62,12 @@ server/
   index.js      # http server: routing, handlers, sessions, RBAC gate
   db.js         # node:sqlite schema + query helpers
   password.js   # scrypt hash + verify
-public/         # landing page, auth pages, dashboard, profile, css, js, images
+public/
+  index.html    # public landing page (served at /)
+  pages/        # all other HTML, served at clean URLs (/login, /register, ...)
+  css/          # styles.css (shared app pages) + landing.css (landing page)
+  js/           # one script per page
+  images/       # photos + logo
 data/           # rmis.db (git-ignored) lives here
 docs/           # sprint1-mvp-plan.md
 ```

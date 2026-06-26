@@ -24,14 +24,14 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 // SI-10 — which role may access which protected pages. '*' = all pages.
 const ROLE_PAGES = {
   Admin:   ['*'],
-  Manager: ['/dashboard.html', '/profile.html', '/modules.html'],
-  Cashier: ['/dashboard.html', '/profile.html'],
-  Staff:   ['/dashboard.html', '/profile.html'],
+  Manager: ['/dashboard', '/profile', '/modules'],
+  Cashier: ['/dashboard', '/profile'],
+  Staff:   ['/dashboard', '/profile'],
 };
 // Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
 const PROTECTED_PAGES = {
-  '/register.html': ['Admin'],          // "Create User" — admin only
-  '/admin-settings.html': ['Admin'],    // admin-only stub
+  '/register': ['Admin'],          // "Create User" — admin only
+  '/admin-settings': ['Admin'],    // admin-only stub
 };
 
 // In-memory session store (SI-7). token -> { userId, email, role }.
@@ -162,7 +162,7 @@ function handleLogin(req, res) {
       'Content-Type': 'application/json',
       'Set-Cookie': 'sid=' + token + '; HttpOnly; Path=/; Max-Age=86400',
     });
-    res.end(JSON.stringify({ redirect: '/dashboard.html', role: user.role }));
+    res.end(JSON.stringify({ redirect: '/dashboard', role: user.role }));
   });
 }
 
@@ -265,7 +265,7 @@ function handleResetRequest(req, res) {
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour, ms epoch (matches integer column).
       dbApi.createReset(token, user.id, expiresAt);
-      const resetPath = '/reset-password.html?token=' + token;
+      const resetPath = '/reset-password?token=' + token;
       console.log('[reset] Password reset link for ' + email + ': http://localhost:3000' + resetPath);
       return sendJson(res, 200, {
         message: 'If that email is registered, a reset link has been generated below.',
@@ -333,19 +333,36 @@ const CONTENT_TYPES = {
   '.ico': 'image/x-icon',
 };
 
-function serveStatic(req, res) {
-  const rawPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
-
-  // Decode %20 and other escapes so filenames with spaces (e.g. "AM logo.jpg") resolve.
+// Map a request URL to a file on disk, supporting clean (extensionless) page
+// URLs: '/' -> index.html, '/login' -> pages/login.html, and '/css/..' etc.
+// served as-is from public/. Returns null on a malformed (undecodable) URL.
+function resolveFilePath(req) {
+  const rawPath = req.url.split('?')[0];
   let urlPath;
   try {
+    // Decode %20 and other escapes so filenames with spaces (e.g. "AM logo.jpg") resolve.
     urlPath = decodeURIComponent(rawPath);
   } catch {
+    return null;
+  }
+
+  if (urlPath === '/') {
+    return path.join(PUBLIC_DIR, 'index.html');
+  }
+  // Extensionless paths are "pages" served from public/pages/ (clean URLs).
+  if (!path.extname(urlPath)) {
+    return path.join(PUBLIC_DIR, 'pages', path.normalize(urlPath) + '.html');
+  }
+  // Everything with an extension (css, js, images, or index.html) is a public asset.
+  return path.join(PUBLIC_DIR, path.normalize(urlPath));
+}
+
+function serveStatic(req, res) {
+  const filePath = resolveFilePath(req);
+  if (filePath === null) {
     res.writeHead(400);
     return res.end('Bad request');
   }
-
-  const filePath = path.join(PUBLIC_DIR, path.normalize(urlPath));
 
   // Block path traversal outside public/.
   if (!filePath.startsWith(PUBLIC_DIR)) {
@@ -366,7 +383,7 @@ function serveStatic(req, res) {
 
 // SI-10 — serve the 403 page for an authenticated-but-unauthorized request.
 function serve403(res) {
-  fs.readFile(path.join(PUBLIC_DIR, '403.html'), (err, content) => {
+  fs.readFile(path.join(PUBLIC_DIR, 'pages', '403.html'), (err, content) => {
     if (err) {
       res.writeHead(403, { 'Content-Type': 'text/plain' });
       return res.end('403 Unauthorized');
@@ -415,8 +432,9 @@ const server = http.createServer((req, res) => {
     return handleResetConfirm(req, res);
   }
   if (req.method === 'GET') {
-    // SI-10 — server-side RBAC gate for protected static pages (blocks direct-URL access).
-    let urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+    // SI-10 — server-side RBAC gate for protected pages (blocks direct-URL access).
+    // Keys in PROTECTED_PAGES are clean URLs, e.g. '/register'.
+    let urlPath = req.url.split('?')[0];
     try {
       urlPath = decodeURIComponent(urlPath);
     } catch {
@@ -426,7 +444,7 @@ const server = http.createServer((req, res) => {
     if (allowedRoles) {
       const s = getSession(req);
       if (!s) {
-        res.writeHead(302, { Location: '/login.html' });
+        res.writeHead(302, { Location: '/login' });
         return res.end();
       }
       if (!allowedRoles.includes(s.role)) {

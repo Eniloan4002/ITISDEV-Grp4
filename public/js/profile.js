@@ -41,7 +41,7 @@ function showMessage(text, type) {
   try {
     const res = await fetch('/api/profile');
     if (res.status === 401) {
-      window.location = '/login.html';
+      window.location = '/login';
       return;
     }
     const data = await res.json();

@@ -28,10 +28,10 @@
     // server-side PROTECTED_PAGES / ROLE_PAGES — but the server gate is the real
     // enforcement; this only hides links a role cannot reach.
     const MODULES = [
-      { href: '/login.html',          label: 'Login (SI-7)',                               roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-      { href: '/profile.html',        label: 'My Profile (SI-9)',                          roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-      { href: '/register.html',       label: 'Create User Account &mdash; Registration (SI-6)', roles: ['Admin'] },
-      { href: '/admin-settings.html', label: 'Admin Settings (SI-10)',                     roles: ['Admin'] },
+      { href: '/login',          label: 'Login (SI-7)',                               roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
+      { href: '/profile',        label: 'My Profile (SI-9)',                          roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
+      { href: '/register',       label: 'Create User Account &mdash; Registration (SI-6)', roles: ['Admin'] },
+      { href: '/admin-settings', label: 'Admin Settings (SI-10)',                     roles: ['Admin'] },
     ];
 
     function renderModules(role) {
@@ -53,7 +53,7 @@
       try {
         const res = await fetch('/api/me');
         if (res.status === 401) {
-          window.location = '/login.html';
+          window.location = '/login';
           return;
         }
         const data = await res.json();
@@ -61,7 +61,7 @@
           `Welcome, ${data.fullName} (${data.role})`;
         renderModules(data.role);
       } catch (err) {
-        window.location = '/login.html';
+        window.location = '/login';
       }
     })();
 
@@ -69,7 +69,7 @@
       try {
         await fetch('/api/logout', { method: 'POST' });
       } finally {
-        window.location = '/login.html';
+        window.location = '/login';
       }
     });
   </script>

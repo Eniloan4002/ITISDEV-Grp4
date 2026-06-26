@@ -1,15 +1,15 @@
-// SI-6 Registration — minimal backend.
+// AM Restaurant RMIS — Sprint 1 backend (auth & user management).
 //
-// Zero external dependencies: uses Node's built-in `http` module, so the app
-// runs with `node server/index.js` (no `npm install` step).
+// Zero external dependencies: uses Node's built-in `http`, `crypto`, and
+// `node:sqlite` modules, so the app runs with `node server/index.js`
+// (no `npm install` step).
 //
-// SCOPE: this file covers ONLY the Registration story (SI-6). Login (SI-7),
-// Password Reset (SI-8), Profile (SI-9), and Roles & Permissions (SI-10) are
-// separate stories owned by other teammates — they are intentionally not here.
+// SCOPE: the full Sprint 1 identity slice —
+//   SI-6 Registration, SI-7 Login, SI-8 Password Reset,
+//   SI-9 Profile Management, SI-10 Roles & Permissions.
 //
-// PERSISTENCE: accounts are stored in a file-backed SQLite database via Node's
-// built-in `node:sqlite` (see server/db.js), so they survive server restarts.
-// Still zero external dependencies — DatabaseSync ships with Node.
+// PERSISTENCE: users live in a file-backed SQLite database (see server/db.js)
+// and survive restarts. Sessions are in-memory (a restart just forces re-login).
 
 const http = require('http');
 const fs = require('fs');
@@ -442,5 +442,5 @@ const server = http.createServer((req, res) => {
 ensureSeedAdmin();
 
 server.listen(PORT, () => {
-  console.log(`RMIS Registration running at http://localhost:${PORT}`);
+  console.log(`AM Restaurant RMIS running at http://localhost:${PORT}`);
 });

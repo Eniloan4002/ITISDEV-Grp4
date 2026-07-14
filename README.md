@@ -6,11 +6,11 @@ identity / user-management slice.
 
 ## Tech stack
 
-Deliberately minimal and **zero-dependency** — no `npm install` needed:
+Deliberately minimal and lightweight:
 
 - **Runtime:** Node.js 22+ (developed on Node 24).
 - **Server:** a single vanilla `http` server (`server/index.js`). No Express.
-- **Persistence:** Node's built-in `node:sqlite` (`server/db.js`), file DB at `data/rmis.db`.
+- **Persistence:** MySQL (AMDB schema under `SQL/`) via `mysql2` (`server/db.js`).
 - **Passwords:** built-in `crypto` scrypt hashing (`server/password.js`).
 - **Sessions:** in-memory cookie sessions (restart forces re-login; user data persists).
 - **Frontend:** static HTML/CSS/JS in `public/` (one shared stylesheet).
@@ -18,8 +18,22 @@ Deliberately minimal and **zero-dependency** — no `npm install` needed:
 ## Run
 
 ```bash
+npm install
 npm start        # node server/index.js  -> http://localhost:3000
 npm run dev      # node --watch server/index.js (auto-restart)
+```
+
+Set database environment variables as needed (defaults shown):
+
+1. Copy `.env.example` to `.env`
+2. Edit values for your SQL server
+
+```bash
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=AMDB
 ```
 
 On first boot a **default admin** is seeded so role-based access can be demoed:
@@ -29,7 +43,11 @@ email:    admin@amrestaurant.local
 password: admin1234        (change after first login)
 ```
 
-The SQLite file `data/rmis.db` is git-ignored; delete it to reset all data.
+Make sure the AMDB schema is created first by running:
+
+1. `SQL/AMDB creation script.sql`
+2. `SQL/AMDB starter data.sql`
+3. `SQL/AMDB views.sql` (optional, for report views)
 
 ## Sprint 1 features & endpoints
 
@@ -43,6 +61,7 @@ server resolves `/login` → `public/pages/login.html`, etc.
 | SI-8  | Password Reset | `/forgot-password`, `/reset-password` | `POST /api/password-reset/request`, `POST /api/password-reset/confirm` |
 | SI-9  | Profile Management | `/profile` | `GET /api/profile`, `POST /api/profile` |
 | SI-10 | Roles & Permissions (RBAC) | `/403`, `/admin-settings` | enforced server-side on protected pages |
+| S2    | Ingredient Inventory | `/inventory` | `GET /api/inventory` |
 
 Roles: **Admin, Manager, Cashier, Staff**.
 
@@ -60,7 +79,7 @@ Roles: **Admin, Manager, Cashier, Staff**.
 ```
 server/
   index.js      # http server: routing, handlers, sessions, RBAC gate
-  db.js         # node:sqlite schema + query helpers
+  db.js         # MySQL (AMDB) query helpers via mysql2
   password.js   # scrypt hash + verify
 public/
   index.html    # public landing page (served at /)
@@ -68,6 +87,5 @@ public/
   css/          # styles.css (shared app pages) + landing.css (landing page)
   js/           # one script per page
   images/       # photos + logo
-data/           # rmis.db (git-ignored) lives here
 docs/           # sprint1-mvp-plan.md
 ```

@@ -4,9 +4,12 @@
   "description": "Restaurant Management Information System (RMIS) for AM Restaurant. ITISDEV S12 - Group 4.",
   "type": "commonjs",
   "main": "server/index.js",
+  "dependencies": {
+    "mysql2": "^3.11.5"
+  },
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "dev": "node --env-file-if-exists=.env --watch server/index.js"
   },
   "keywords": [
     "rmis",

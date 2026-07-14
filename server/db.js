@@ -1,71 +1,225 @@
-// Persistence layer — Node's built-in `node:sqlite` (no npm install).
+// Persistence layer for AMDB (MySQL).
 //
-// Replaces the old in-memory `accounts` array with a real file-backed SQLite
-// database at `data/rmis.db`. Zero external dependencies: DatabaseSync ships
-// with Node 22+/24. (You may see an ExperimentalWarning about SQLite — that's
-// expected and harmless.)
-//
-// Conventions (do not deviate):
-//   - DDL via db.exec(...); queries via db.prepare(...).get/all/run(...).
-//   - POSITIONAL `?` params only (named params caused a past breakage).
-//   - lastInsertRowid is a BigInt — wrap with Number() before returning.
+// This module keeps the same public helper API the server already uses, but the
+// data now comes from the SQL schema in SQL/AMDB creation script.sql.
 
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
+const crypto = require('crypto');
+const mysql = require('mysql2/promise');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'rmis.db');
-const db = new DatabaseSync(DB_PATH);
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'AMDB',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
-// Schema — idempotent, runs on every load.
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    full_name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL,
-    contact_number TEXT DEFAULT '',
-    created_at TEXT NOT NULL
+let initPromise;
+
+function splitName(fullName) {
+  const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');
+  if (!cleaned) return { firstName: 'User', lastName: 'Account' };
+  const parts = cleaned.split(' ');
+  if (parts.length === 1) return { firstName: parts[0], lastName: '-' };
+  return { firstName: parts.shift(), lastName: parts.join(' ') };
+}
+
+function usernameFromEmail(email) {
+  const local = String(email || '').split('@')[0] || 'user';
+  const base = local.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/^_+|_+$/g, '');
+  return (base || 'user').slice(0, 40);
+}
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(String(token)).digest('hex');
+}
+
+async function init() {
+  if (!initPromise) {
+    initPromise = (async () => {
+      await pool.query('SELECT 1');
+      await pool.query(
+        `INSERT IGNORE INTO roles (role_name, role_description) VALUES
+         ('Admin', 'Full access to all system modules'),
+         ('Manager', 'Manages restaurant operations'),
+         ('Cashier', 'Handles POS transactions and payments'),
+         ('Staff', 'Standard staff access')`
+      );
+    })();
+  }
+  return initPromise;
+}
+
+async function findUserByEmail(email) {
+  const [rows] = await pool.query(
+    `SELECT
+       a.account_id AS id,
+       CONCAT(a.first_name, ' ', a.last_name) AS full_name,
+       a.email,
+       a.password_hash,
+       COALESCE(r.role_name, 'Staff') AS role,
+       COALESCE(a.phone_number, '') AS contact_number
+     FROM accounts a
+     LEFT JOIN account_roles ar ON ar.account_id = a.account_id
+     LEFT JOIN roles r ON r.role_id = ar.role_id
+     WHERE a.email = ? AND a.is_active = TRUE
+     ORDER BY ar.role_id ASC
+     LIMIT 1`,
+    [email]
   );
-  CREATE TABLE IF NOT EXISTS password_resets (
-    token TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    used INTEGER NOT NULL DEFAULT 0
+  return rows[0] || null;
+}
+
+async function findUserById(id) {
+  const [rows] = await pool.query(
+    `SELECT
+       a.account_id AS id,
+       CONCAT(a.first_name, ' ', a.last_name) AS full_name,
+       a.email,
+       a.password_hash,
+       COALESCE(r.role_name, 'Staff') AS role,
+       COALESCE(a.phone_number, '') AS contact_number
+     FROM accounts a
+     LEFT JOIN account_roles ar ON ar.account_id = a.account_id
+     LEFT JOIN roles r ON r.role_id = ar.role_id
+     WHERE a.account_id = ? AND a.is_active = TRUE
+     ORDER BY ar.role_id ASC
+     LIMIT 1`,
+    [id]
   );
-`);
-
-function findUserByEmail(email) {
-  return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  return rows[0] || null;
 }
 
-function findUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+async function createUser({ fullName, email, passwordHash, role }) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const { firstName, lastName } = splitName(fullName);
+    const baseUsername = usernameFromEmail(email);
+    let username = baseUsername;
+    let suffix = 1;
+
+    // Keep username unique for the SQL schema.
+    while (true) {
+      const [takenRows] = await conn.query('SELECT account_id FROM accounts WHERE username = ? LIMIT 1', [username]);
+      if (!takenRows.length) break;
+      username = `${baseUsername}_${suffix++}`.slice(0, 50);
+    }
+
+    const [insertResult] = await conn.query(
+      `INSERT INTO accounts
+         (username, email, password_hash, first_name, last_name, phone_number, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, TRUE)`,
+      [username, email, passwordHash, firstName, lastName, '']
+    );
+
+    const [roleRows] = await conn.query('SELECT role_id FROM roles WHERE role_name = ? LIMIT 1', [role]);
+    if (!roleRows.length) {
+      throw new Error(`Role not found: ${role}`);
+    }
+
+    await conn.query('INSERT INTO account_roles (account_id, role_id) VALUES (?, ?)', [insertResult.insertId, roleRows[0].role_id]);
+
+    await conn.commit();
+    return Number(insertResult.insertId);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
-function createUser({ fullName, email, passwordHash, role }) {
-  const info = db.prepare('INSERT INTO users (full_name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)').run(fullName, email, passwordHash, role, new Date().toISOString());
-  return Number(info.lastInsertRowid);
+async function updateProfile(id, { fullName, contactNumber }) {
+  const { firstName, lastName } = splitName(fullName);
+  const [result] = await pool.query(
+    `UPDATE accounts
+     SET first_name = ?, last_name = ?, phone_number = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE account_id = ?`,
+    [firstName, lastName, contactNumber, id]
+  );
+  return result;
 }
 
-function updateProfile(id, { fullName, contactNumber }) {
-  return db.prepare('UPDATE users SET full_name = ?, contact_number = ? WHERE id = ?').run(fullName, contactNumber, id);
+async function updatePassword(id, passwordHash) {
+  const [result] = await pool.query(
+    'UPDATE accounts SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE account_id = ?',
+    [passwordHash, id]
+  );
+  return result;
 }
 
-function updatePassword(id, passwordHash) {
-  return db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
+async function createReset(token, userId, expiresAt) {
+  const tokenHash = hashResetToken(token);
+  const [result] = await pool.query(
+    'INSERT INTO password_reset_tokens (account_id, token_hash, expires_at) VALUES (?, ?, ?)',
+    [userId, tokenHash, new Date(expiresAt)]
+  );
+  return result;
 }
 
-function createReset(token, userId, expiresAt) {
-  return db.prepare('INSERT INTO password_resets (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+async function getReset(token) {
+  const tokenHash = hashResetToken(token);
+  const [rows] = await pool.query(
+    `SELECT
+       account_id AS user_id,
+       (UNIX_TIMESTAMP(expires_at) * 1000) AS expires_at,
+       (used_at IS NOT NULL) AS used
+     FROM password_reset_tokens
+     WHERE token_hash = ?
+     LIMIT 1`,
+    [tokenHash]
+  );
+  return rows[0] || null;
 }
 
-function getReset(token) {
-  return db.prepare('SELECT * FROM password_resets WHERE token = ?').get(token);
+async function markResetUsed(token) {
+  const tokenHash = hashResetToken(token);
+  const [result] = await pool.query(
+    'UPDATE password_reset_tokens SET used_at = NOW() WHERE token_hash = ?',
+    [tokenHash]
+  );
+  return result;
 }
 
-function markResetUsed(token) {
-  return db.prepare('UPDATE password_resets SET used = 1 WHERE token = ?').run(token);
+async function listInventoryIngredients() {
+  const [rows] = await pool.query(
+    `SELECT
+       i.ingredient_id,
+       i.ingredient_name,
+       COALESCE(it.ingredient_type_name, 'Uncategorized') AS ingredient_type_name,
+       i.unit_of_measure,
+       COALESCE(inv.current_quantity, 0) AS current_quantity,
+       i.reorder_level,
+       i.max_stock_level,
+       CASE
+         WHEN COALESCE(inv.current_quantity, 0) <= 0 THEN 'Out of Stock'
+         WHEN COALESCE(inv.current_quantity, 0) <= i.reorder_level THEN 'Low Stock'
+         ELSE 'Normal'
+       END AS stock_status
+     FROM ingredients i
+     LEFT JOIN ingredient_type it ON i.ingredient_type_id = it.ingredient_type_id
+     LEFT JOIN ingredient_inventory inv ON i.ingredient_id = inv.ingredient_id
+     WHERE i.is_active = TRUE
+     ORDER BY i.ingredient_name ASC`
+  );
+  return rows;
 }
 
-module.exports = { db, findUserByEmail, findUserById, createUser, updateProfile, updatePassword, createReset, getReset, markResetUsed };
+module.exports = {
+  init,
+  pool,
+  findUserByEmail,
+  findUserById,
+  createUser,
+  updateProfile,
+  updatePassword,
+  createReset,
+  getReset,
+  markResetUsed,
+  listInventoryIngredients,
+};

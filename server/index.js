@@ -1,15 +1,8 @@
-// AM Restaurant RMIS — Sprint 1 backend (auth & user management).
+// AM Restaurant RMIS backend.
 //
-// Zero external dependencies: uses Node's built-in `http`, `crypto`, and
-// `node:sqlite` modules, so the app runs with `node server/index.js`
-// (no `npm install` step).
-//
-// SCOPE: the full Sprint 1 identity slice —
-//   SI-6 Registration, SI-7 Login, SI-8 Password Reset,
-//   SI-9 Profile Management, SI-10 Roles & Permissions.
-//
-// PERSISTENCE: users live in a file-backed SQLite database (see server/db.js)
-// and survive restarts. Sessions are in-memory (a restart just forces re-login).
+// Runtime stack:
+// - Node core modules (http, fs, path, crypto)
+// - MySQL persistence via server/db.js (AMDB schema)
 
 const http = require('http');
 const fs = require('fs');
@@ -21,26 +14,26 @@ const { hashPassword, verifyPassword } = require('./password');
 const PORT = 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
-// SI-10 — which role may access which protected pages. '*' = all pages.
+// SI-10 role-based visible modules. '*' = all pages.
 const ROLE_PAGES = {
-  Admin:   ['*'],
-  Manager: ['/dashboard', '/profile', '/modules'],
+  Admin: ['*'],
+  Manager: ['/dashboard', '/profile', '/modules', '/inventory'],
   Cashier: ['/dashboard', '/profile'],
-  Staff:   ['/dashboard', '/profile'],
+  Staff: ['/dashboard', '/profile'],
 };
-// Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
+
+// Pages that require auth + specific roles.
 const PROTECTED_PAGES = {
-  '/register': ['Admin'],          // "Create User" — admin only
-  '/admin-settings': ['Admin'],    // admin-only stub
+  '/register': ['Admin'],
+  '/admin-settings': ['Admin'],
+  '/inventory': ['Admin', 'Manager'],
 };
 
-// In-memory session store (SI-7). token -> { userId, email, role }.
-// Acceptable MVP: a server restart just forces re-login; user data persists in SQLite.
+// In-memory session store (MVP): restart forces re-login.
 const sessions = new Map();
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CONTACT_RE = /^[0-9+\-()\s]{7,20}$/;
 
-// Validate the submitted fields. Returns a { field: message } map (empty = valid).
 function validate(data) {
   const errors = {};
   if (!data.fullName || !data.fullName.trim()) {
@@ -65,52 +58,6 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-// POST /api/register — create a new staff account (SI-6).
-function handleRegister(req, res) {
-  let raw = '';
-  req.on('data', (chunk) => { raw += chunk; });
-  req.on('end', () => {
-    let data;
-    try {
-      data = JSON.parse(raw || '{}');
-    } catch {
-      return sendJson(res, 400, { message: 'Invalid request.' });
-    }
-
-    // AC2 — invalid input (including bad email format) is rejected.
-    const errors = validate(data);
-    if (Object.keys(errors).length > 0) {
-      return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
-    }
-
-    const email = data.email.trim().toLowerCase();
-
-    // AC2 — reject a duplicate email with a clear message.
-    if (dbApi.findUserByEmail(email)) {
-      return sendJson(res, 409, {
-        message: 'Email already registered.',
-        errors: { email: 'Email already registered.' },
-      });
-    }
-
-    // AC1 — save the new account with a hashed password (never plaintext).
-    dbApi.createUser({
-      fullName: data.fullName.trim(),
-      email,
-      passwordHash: hashPassword(data.password),
-      role: data.role,
-    });
-
-    // AC1 — ...and trigger the welcome/activation email (stubbed to a log for now).
-    console.log(`[email] Welcome email triggered for ${email} (role: ${data.role}).`);
-
-    sendJson(res, 201, {
-      message: 'Account created. A welcome email has been sent to the staff member.',
-    });
-  });
-}
-
-// Parse the Cookie header into a plain object (SI-7). Returns {} if absent.
 function parseCookies(req) {
   const header = req.headers.cookie;
   if (!header) return {};
@@ -123,50 +70,109 @@ function parseCookies(req) {
   return cookies;
 }
 
-// Resolve the current session from the `sid` cookie, or null. Reused by later phases.
 function getSession(req) {
   const token = parseCookies(req).sid;
   if (!token) return null;
   return sessions.get(token) || null;
 }
 
-// POST /api/login — authenticate a staff member and start a session (SI-7).
-function handleLogin(req, res) {
-  let raw = '';
-  req.on('data', (chunk) => { raw += chunk; });
-  req.on('end', () => {
-    let data;
-    try {
-      data = JSON.parse(raw || '{}');
-    } catch {
-      return sendJson(res, 400, { message: 'Invalid request.' });
-    }
-
-    if (!data.email || !data.password) {
-      return sendJson(res, 400, { message: 'Email and password are required.' });
-    }
-
-    const email = data.email.trim().toLowerCase();
-    const user = dbApi.findUserByEmail(email);
-
-    // Generic message — never reveal which part failed (AC requirement).
-    if (!user || !verifyPassword(data.password, user.password_hash)) {
-      return sendJson(res, 401, { message: 'Invalid email or password.' });
-    }
-
-    const token = crypto.randomBytes(32).toString('hex');
-    sessions.set(token, { userId: user.id, email: user.email, role: user.role });
-
-    // Set the session cookie AND a JSON body, so we write the head manually.
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Set-Cookie': 'sid=' + token + '; HttpOnly; Path=/; Max-Age=86400',
+function readJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let raw = '';
+    req.on('data', (chunk) => {
+      raw += chunk;
     });
-    res.end(JSON.stringify({ redirect: '/dashboard', role: user.role }));
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(raw || '{}'));
+      } catch {
+        reject(new Error('INVALID_JSON'));
+      }
+    });
+    req.on('error', reject);
   });
 }
 
-// POST /api/logout — end the current session and clear the cookie (SI-7).
+async function handleRegister(req, res) {
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (s.role !== 'Admin') return sendJson(res, 403, { message: 'Unauthorized.' });
+
+  const errors = validate(data);
+  if (Object.keys(errors).length > 0) {
+    return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
+  }
+
+  const email = data.email.trim().toLowerCase();
+
+  try {
+    if (await dbApi.findUserByEmail(email)) {
+      return sendJson(res, 409, {
+        message: 'Email already registered.',
+        errors: { email: 'Email already registered.' },
+      });
+    }
+
+    await dbApi.createUser({
+      fullName: data.fullName.trim(),
+      email,
+      passwordHash: hashPassword(data.password),
+      role: data.role,
+    });
+  } catch (err) {
+    console.error('[register] failed:', err);
+    return sendJson(res, 500, { message: 'Could not create account. Please try again.' });
+  }
+
+  console.log(`[email] Welcome email triggered for ${email} (role: ${data.role}).`);
+  return sendJson(res, 201, {
+    message: 'Account created. A welcome email has been sent to the staff member.',
+  });
+}
+
+async function handleLogin(req, res) {
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  if (!data.email || !data.password) {
+    return sendJson(res, 400, { message: 'Email and password are required.' });
+  }
+
+  const email = data.email.trim().toLowerCase();
+  let user;
+
+  try {
+    user = await dbApi.findUserByEmail(email);
+  } catch (err) {
+    console.error('[login] failed:', err);
+    return sendJson(res, 500, { message: 'Could not process login. Please try again.' });
+  }
+
+  if (!user || !verifyPassword(data.password, user.password_hash)) {
+    return sendJson(res, 401, { message: 'Invalid email or password.' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, { userId: user.id, email: user.email, role: user.role });
+
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Set-Cookie': 'sid=' + token + '; HttpOnly; Path=/; Max-Age=86400',
+  });
+  res.end(JSON.stringify({ redirect: '/dashboard', role: user.role }));
+}
+
 function handleLogout(req, res) {
   const token = parseCookies(req).sid;
   if (token) sessions.delete(token);
@@ -177,94 +183,94 @@ function handleLogout(req, res) {
   res.end(JSON.stringify({ message: 'Logged out.' }));
 }
 
-// GET /api/me — return the logged-in user's display info, or 401 (SI-7).
-function handleMe(req, res) {
+async function handleMe(req, res) {
   const s = getSession(req);
   if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
-  const u = dbApi.findUserById(s.userId);
-  if (!u) return sendJson(res, 401, { message: 'Not authenticated.' });
-  return sendJson(res, 200, { fullName: u.full_name, email: u.email, role: u.role });
+
+  try {
+    const u = await dbApi.findUserById(s.userId);
+    if (!u) return sendJson(res, 401, { message: 'Not authenticated.' });
+    return sendJson(res, 200, { fullName: u.full_name, email: u.email, role: u.role });
+  } catch (err) {
+    console.error('[me] failed:', err);
+    return sendJson(res, 500, { message: 'Could not load current user.' });
+  }
 }
 
-// GET /api/profile — return the logged-in user's editable profile (SI-9).
-function handleGetProfile(req, res) {
+async function handleGetProfile(req, res) {
   const s = getSession(req);
   if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
-  const u = dbApi.findUserById(s.userId);
-  if (!u) return sendJson(res, 401, { message: 'Not authenticated.' });
-  return sendJson(res, 200, {
-    fullName: u.full_name,
-    email: u.email,
-    role: u.role,
-    contactNumber: u.contact_number,
-  });
+
+  try {
+    const u = await dbApi.findUserById(s.userId);
+    if (!u) return sendJson(res, 401, { message: 'Not authenticated.' });
+    return sendJson(res, 200, {
+      fullName: u.full_name,
+      email: u.email,
+      role: u.role,
+      contactNumber: u.contact_number,
+    });
+  } catch (err) {
+    console.error('[profile:get] failed:', err);
+    return sendJson(res, 500, { message: 'Could not load profile.' });
+  }
 }
 
-// POST /api/profile — update display name + contact number only (SI-9).
-// CRITICAL (AC): role and email are READ-ONLY — never read or write them from
-// the request body, even if the client sends them.
-const CONTACT_RE = /^[0-9+\-()\s]{7,20}$/;
-function handleUpdateProfile(req, res) {
+async function handleUpdateProfile(req, res) {
   const s = getSession(req);
   if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
 
-  let raw = '';
-  req.on('data', (chunk) => { raw += chunk; });
-  req.on('end', () => {
-    let data;
-    try {
-      data = JSON.parse(raw || '{}');
-    } catch {
-      return sendJson(res, 400, { message: 'Invalid request.' });
-    }
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
 
-    const errors = {};
-    if (!data.fullName || !data.fullName.trim()) {
-      errors.fullName = 'Display name is required.';
-    }
-    if (!data.contactNumber || !data.contactNumber.trim()) {
-      errors.contactNumber = 'Contact number is required.';
-    } else if (!CONTACT_RE.test(data.contactNumber.trim())) {
-      errors.contactNumber = 'Enter a valid contact number.';
-    }
+  const errors = {};
+  if (!data.fullName || !data.fullName.trim()) {
+    errors.fullName = 'Display name is required.';
+  }
+  if (!data.contactNumber || !data.contactNumber.trim()) {
+    errors.contactNumber = 'Contact number is required.';
+  } else if (!CONTACT_RE.test(data.contactNumber.trim())) {
+    errors.contactNumber = 'Enter a valid contact number.';
+  }
 
-    if (Object.keys(errors).length > 0) {
-      return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
-    }
+  if (Object.keys(errors).length > 0) {
+    return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
+  }
 
-    // Only fullName + contactNumber are ever written. role/email are ignored.
-    dbApi.updateProfile(s.userId, {
+  try {
+    await dbApi.updateProfile(s.userId, {
       fullName: data.fullName.trim(),
       contactNumber: data.contactNumber.trim(),
     });
     return sendJson(res, 200, { message: 'Profile updated.' });
-  });
+  } catch (err) {
+    console.error('[profile:update] failed:', err);
+    return sendJson(res, 500, { message: 'Could not update profile. Please try again.' });
+  }
 }
 
-// POST /api/password-reset/request — issue a time-limited reset token (SI-8).
-// Delivery (MVP, no SMTP): the link is logged to the server console AND returned
-// in the response so the page can show it. The response message is ALWAYS generic
-// so the endpoint never reveals whether an email is registered.
-function handleResetRequest(req, res) {
-  let raw = '';
-  req.on('data', (chunk) => { raw += chunk; });
-  req.on('end', () => {
-    let data;
-    try {
-      data = JSON.parse(raw || '{}');
-    } catch {
-      return sendJson(res, 400, { message: 'Invalid request.' });
-    }
+async function handleResetRequest(req, res) {
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
 
-    const email = (data.email || '').trim().toLowerCase();
-    const user = email ? dbApi.findUserByEmail(email) : null;
+  const email = (data.email || '').trim().toLowerCase();
 
-    // Only generate a token if the email actually exists. For unknown emails we
-    // fall through to the same generic response with NO resetLink (no existence leak).
+  try {
+    const user = email ? await dbApi.findUserByEmail(email) : null;
+
     if (user) {
       const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour, ms epoch (matches integer column).
-      dbApi.createReset(token, user.id, expiresAt);
+      const expiresAt = Date.now() + 60 * 60 * 1000;
+      await dbApi.createReset(token, user.id, expiresAt);
+
       const resetPath = '/reset-password?token=' + token;
       console.log('[reset] Password reset link for ' + email + ': http://localhost:3000' + resetPath);
       return sendJson(res, 200, {
@@ -276,35 +282,33 @@ function handleResetRequest(req, res) {
     return sendJson(res, 200, {
       message: 'If that email is registered, a reset link has been generated below.',
     });
-  });
+  } catch (err) {
+    console.error('[reset:request] failed:', err);
+    return sendJson(res, 500, { message: 'Could not process the reset request.' });
+  }
 }
 
-// POST /api/password-reset/confirm — consume a token and set a new password (SI-8).
-// Token is validated SERVER-SIDE: must exist, be unused, and not expired. Single-use.
-function handleResetConfirm(req, res) {
-  let raw = '';
-  req.on('data', (chunk) => { raw += chunk; });
-  req.on('end', () => {
-    let data;
-    try {
-      data = JSON.parse(raw || '{}');
-    } catch {
-      return sendJson(res, 400, { message: 'Invalid request.' });
-    }
+async function handleResetConfirm(req, res) {
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
 
-    const token = data.token;
-    const newPassword = data.newPassword;
+  const token = data.token;
+  const newPassword = data.newPassword;
 
-    if (!token) {
-      return sendJson(res, 400, { message: 'Invalid or missing reset token.' });
-    }
+  if (!token) {
+    return sendJson(res, 400, { message: 'Invalid or missing reset token.' });
+  }
 
-    const row = dbApi.getReset(token);
+  try {
+    const row = await dbApi.getReset(token);
     if (!row || row.used || row.expires_at < Date.now()) {
       return sendJson(res, 400, { message: 'Reset link is invalid or expired.' });
     }
 
-    // AC — new password must be at least 8 chars and alphanumeric (letters + numbers).
     const p = newPassword || '';
     if (p.length < 8 || !/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) {
       return sendJson(res, 400, {
@@ -313,13 +317,31 @@ function handleResetConfirm(req, res) {
       });
     }
 
-    dbApi.updatePassword(row.user_id, hashPassword(newPassword));
-    dbApi.markResetUsed(token); // single-use: the link cannot be replayed.
+    await dbApi.updatePassword(row.user_id, hashPassword(newPassword));
+    await dbApi.markResetUsed(token);
     return sendJson(res, 200, { message: 'Password updated. You can now log in.' });
-  });
+  } catch (err) {
+    console.error('[reset:confirm] failed:', err);
+    return sendJson(res, 500, { message: 'Could not reset password. Please try again.' });
+  }
 }
 
-// Serve the static frontend from public/ (index.html, register.html, css, js).
+async function handleGetInventory(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  try {
+    const items = await dbApi.listInventoryIngredients();
+    return sendJson(res, 200, { items });
+  } catch (err) {
+    console.error('[inventory] failed:', err);
+    return sendJson(res, 500, { message: 'Could not load inventory.' });
+  }
+}
+
 const CONTENT_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -333,14 +355,10 @@ const CONTENT_TYPES = {
   '.ico': 'image/x-icon',
 };
 
-// Map a request URL to a file on disk, supporting clean (extensionless) page
-// URLs: '/' -> index.html, '/login' -> pages/login.html, and '/css/..' etc.
-// served as-is from public/. Returns null on a malformed (undecodable) URL.
 function resolveFilePath(req) {
   const rawPath = req.url.split('?')[0];
   let urlPath;
   try {
-    // Decode %20 and other escapes so filenames with spaces (e.g. "AM logo.jpg") resolve.
     urlPath = decodeURIComponent(rawPath);
   } catch {
     return null;
@@ -349,11 +367,9 @@ function resolveFilePath(req) {
   if (urlPath === '/') {
     return path.join(PUBLIC_DIR, 'index.html');
   }
-  // Extensionless paths are "pages" served from public/pages/ (clean URLs).
   if (!path.extname(urlPath)) {
     return path.join(PUBLIC_DIR, 'pages', path.normalize(urlPath) + '.html');
   }
-  // Everything with an extension (css, js, images, or index.html) is a public asset.
   return path.join(PUBLIC_DIR, path.normalize(urlPath));
 }
 
@@ -364,7 +380,6 @@ function serveStatic(req, res) {
     return res.end('Bad request');
   }
 
-  // Block path traversal outside public/.
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
     return res.end('Forbidden');
@@ -381,7 +396,6 @@ function serveStatic(req, res) {
   });
 }
 
-// SI-10 — serve the 403 page for an authenticated-but-unauthorized request.
 function serve403(res) {
   fs.readFile(path.join(PUBLIC_DIR, 'pages', '403.html'), (err, content) => {
     if (err) {
@@ -393,11 +407,11 @@ function serve403(res) {
   });
 }
 
-// Bootstrap — create a default Admin so RBAC can be demoed. Idempotent.
 const SEED_EMAIL = 'admin@amrestaurant.local';
-function ensureSeedAdmin() {
-  if (dbApi.findUserByEmail(SEED_EMAIL)) return;
-  dbApi.createUser({
+
+async function ensureSeedAdmin() {
+  if (await dbApi.findUserByEmail(SEED_EMAIL)) return;
+  await dbApi.createUser({
     fullName: 'Default Admin',
     email: SEED_EMAIL,
     passwordHash: hashPassword('admin1234'),
@@ -406,59 +420,79 @@ function ensureSeedAdmin() {
   console.log('[seed] Default admin created: admin@amrestaurant.local / admin1234 (change after first login)');
 }
 
-const server = http.createServer((req, res) => {
-  if (req.method === 'POST' && req.url === '/api/register') {
-    return handleRegister(req, res);
-  }
-  if (req.method === 'POST' && req.url === '/api/login') {
-    return handleLogin(req, res);
-  }
-  if (req.method === 'POST' && req.url === '/api/logout') {
-    return handleLogout(req, res);
-  }
-  if (req.method === 'GET' && req.url === '/api/me') {
-    return handleMe(req, res);
-  }
-  if (req.method === 'GET' && req.url === '/api/profile') {
-    return handleGetProfile(req, res);
-  }
-  if (req.method === 'POST' && req.url === '/api/profile') {
-    return handleUpdateProfile(req, res);
-  }
-  if (req.method === 'POST' && req.url === '/api/password-reset/request') {
-    return handleResetRequest(req, res);
-  }
-  if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
-    return handleResetConfirm(req, res);
-  }
-  if (req.method === 'GET') {
-    // SI-10 — server-side RBAC gate for protected pages (blocks direct-URL access).
-    // Keys in PROTECTED_PAGES are clean URLs, e.g. '/register'.
-    let urlPath = req.url.split('?')[0];
-    try {
-      urlPath = decodeURIComponent(urlPath);
-    } catch {
-      // Leave urlPath as the raw split; serveStatic re-decodes and handles bad input.
+const server = http.createServer(async (req, res) => {
+  try {
+    if (req.method === 'POST' && req.url === '/api/register') {
+      return handleRegister(req, res);
     }
-    const allowedRoles = PROTECTED_PAGES[urlPath];
-    if (allowedRoles) {
-      const s = getSession(req);
-      if (!s) {
-        res.writeHead(302, { Location: '/login' });
-        return res.end();
-      }
-      if (!allowedRoles.includes(s.role)) {
-        return serve403(res);
-      }
+    if (req.method === 'POST' && req.url === '/api/login') {
+      return handleLogin(req, res);
     }
-    return serveStatic(req, res);
+    if (req.method === 'POST' && req.url === '/api/logout') {
+      return handleLogout(req, res);
+    }
+    if (req.method === 'GET' && req.url === '/api/me') {
+      return handleMe(req, res);
+    }
+    if (req.method === 'GET' && req.url === '/api/profile') {
+      return handleGetProfile(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/api/profile') {
+      return handleUpdateProfile(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/api/password-reset/request') {
+      return handleResetRequest(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
+      return handleResetConfirm(req, res);
+    }
+    if (req.method === 'GET' && req.url === '/api/inventory') {
+      return handleGetInventory(req, res);
+    }
+
+    if (req.method === 'GET') {
+      let urlPath = req.url.split('?')[0];
+      try {
+        urlPath = decodeURIComponent(urlPath);
+      } catch {
+        // Keep raw urlPath and let static handling deal with malformed paths.
+      }
+
+      const allowedRoles = PROTECTED_PAGES[urlPath];
+      if (allowedRoles) {
+        const s = getSession(req);
+        if (!s) {
+          res.writeHead(302, { Location: '/login' });
+          return res.end();
+        }
+        if (!allowedRoles.includes(s.role)) {
+          return serve403(res);
+        }
+      }
+
+      return serveStatic(req, res);
+    }
+
+    res.writeHead(404);
+    res.end('Not found');
+  } catch (err) {
+    console.error('[server] unhandled error:', err);
+    sendJson(res, 500, { message: 'Internal server error.' });
   }
-  res.writeHead(404);
-  res.end('Not found');
 });
 
-ensureSeedAdmin();
+async function bootstrap() {
+  try {
+    await dbApi.init();
+    await ensureSeedAdmin();
 
-server.listen(PORT, () => {
-  console.log(`AM Restaurant RMIS running at http://localhost:${PORT}`);
-});
+    server.listen(PORT, () => {
+      console.log(`AM Restaurant RMIS running at http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('[bootstrap] Failed to start server:', err);
+    process.exit(1);
+  }
+}
+
+bootstrap();

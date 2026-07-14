@@ -40,6 +40,10 @@ body {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
 }
 
+.container-wide {
+  max-width: 980px;
+}
+
 /* Headers */
 .page-header {
   text-align: center;
@@ -225,4 +229,51 @@ section {
 .page-footer {
   margin-top: 24px;
   text-align: center;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+.data-table thead th {
+  color: var(--text-light);
+  font-weight: 600;
+  background: #fafafa;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-pill.is-ok {
+  background: #e6f4ea;
+  color: #1e7e34;
+}
+
+.status-pill.is-warning {
+  background: #fff4de;
+  color: #9b6a00;
+}
+
+.status-pill.is-danger {
+  background: #fdeaea;
+  color: #b02727;
 }

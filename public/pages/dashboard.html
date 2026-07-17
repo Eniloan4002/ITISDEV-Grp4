@@ -4,74 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard &mdash; AM Restaurant RMIS</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
 </head>
-<body>
-  <main class="container">
-    <header class="page-header">
-      <h1>AM Restaurant &mdash; RMIS</h1>
-      <p class="subtitle" id="greeting">Loading&hellip;</p>
-    </header>
+<body class="app">
+  <!-- Shared top bar (hydrated by rmis-modules.js from /api/me). -->
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
 
-    <section>
-      <h2>Modules</h2>
-      <ul class="module-list" id="module-list"></ul>
-    </section>
-
-    <div class="actions">
-      <button type="button" id="logout-btn">Logout</button>
+  <main class="home">
+    <div class="home-head">
+      <h1 id="greeting">Welcome&hellip;</h1>
+      <p class="subtitle">Restaurant Management Information System</p>
     </div>
+
+    <!-- KPI stat tiles (placeholder demo figures). -->
+    <section class="kpi-row" id="kpi-row"></section>
+
+    <!-- Module app grid (role-filtered). -->
+    <h2 class="section-title">Modules</h2>
+    <section class="app-grid" id="app-grid"></section>
+
+    <!-- Administration (Admin only; removed for other roles). -->
+    <section id="admin-section">
+      <h2 class="section-title">Administration</h2>
+      <div class="app-grid" id="admin-grid"></div>
+    </section>
   </main>
 
-  <script>
-    // Module links and the roles allowed to see each (SI-10). Mirrors the
-    // server-side PROTECTED_PAGES / ROLE_PAGES — but the server gate is the real
-    // enforcement; this only hides links a role cannot reach.
-    const MODULES = [
-      { href: '/login',          label: 'Login (SI-7)',                               roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-      { href: '/profile',        label: 'My Profile (SI-9)',                          roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-      { href: '/register',       label: 'Create User Account &mdash; Registration (SI-6)', roles: ['Admin'] },
-      { href: '/admin-settings', label: 'Admin Settings (SI-10)',                     roles: ['Admin'] },
-    ];
-
-    function renderModules(role) {
-      const list = document.getElementById('module-list');
-      list.innerHTML = '';
-      for (const m of MODULES) {
-        if (!m.roles.includes(role)) continue;
-        const li = document.createElement('li');
-        const a = document.createElement('a');
-        a.href = m.href;
-        a.innerHTML = m.label;
-        li.appendChild(a);
-        list.appendChild(li);
-      }
-    }
-
-    // Role-aware landing page (SI-7/SI-10).
-    (async () => {
-      try {
-        const res = await fetch('/api/me');
-        if (res.status === 401) {
-          window.location = '/login';
-          return;
-        }
-        const data = await res.json();
-        document.getElementById('greeting').textContent =
-          `Welcome, ${data.fullName} (${data.role})`;
-        renderModules(data.role);
-      } catch (err) {
-        window.location = '/login';
-      }
-    })();
-
-    document.getElementById('logout-btn').addEventListener('click', async () => {
-      try {
-        await fetch('/api/logout', { method: 'POST' });
-      } finally {
-        window.location = '/login';
-      }
-    });
-  </script>
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/dashboard.js"></script>
 </body>
 </html>

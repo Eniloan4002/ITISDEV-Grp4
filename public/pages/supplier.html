@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supplier &amp; Commissary &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Supplier &amp; Commissary</div>
+      <a class="side-link is-active" href="/supplier">Overview</a>
+      <span class="side-link is-disabled">Suppliers</span>
+      <span class="side-link is-disabled">Purchase orders</span>
+      <span class="side-link is-disabled">Deliveries</span>
+      <span class="side-link is-disabled">Commissary</span>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Supplier &amp; Commissary</h1>
+        <span class="pill pill-sprint">Placeholder &middot; Sprint 3</span>
+      </div>
+      <div class="banner">
+        <strong>Placeholder module.</strong> Procurement, purchase orders, and supply
+        coordination are scheduled for the <strong>Sprint 3 &mdash; Management
+        Modules</strong> build. Figures below are demo data.
+      </div>
+
+      <section class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Suppliers</div><div class="kpi-value">18</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Open POs</div><div class="kpi-value">5</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Due Deliveries</div><div class="kpi-value">2</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Spend MTD</div><div class="kpi-value">₱210k</div><div class="kpi-sub">demo data</div></div>
+      </section>
+
+      <div class="card">
+        <div class="card-head">Purchase orders <span class="demo-note">&mdash; sample rows</span></div>
+        <table class="mock">
+          <thead><tr><th>PO #</th><th>Supplier</th><th>Items</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>PO-207</td><td>Iligan Meats</td><td>6</td><td>₱18,400</td><td><span class="tag tag-ok">Received</span></td></tr>
+            <tr><td>PO-208</td><td>Fresh Farms</td><td>12</td><td>₱9,750</td><td><span class="tag tag-warn">Pending</span></td></tr>
+            <tr><td>PO-209</td><td>Bean Traders</td><td>3</td><td>₱6,200</td><td><span class="tag tag-warn">In transit</span></td></tr>
+            <tr><td>PO-210</td><td>City Poultry</td><td>4</td><td>₱11,000</td><td><span class="tag tag-ok">Received</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales &amp; Billing &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Sales &amp; Billing</div>
+      <a class="side-link is-active" href="/sales">Overview</a>
+      <span class="side-link is-disabled">Orders</span>
+      <span class="side-link is-disabled">Invoices</span>
+      <span class="side-link is-disabled">Receipts</span>
+      <span class="side-link is-disabled">Payments</span>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Sales &amp; Billing</h1>
+        <span class="pill pill-sprint">Placeholder &middot; Sprint 2</span>
+      </div>
+      <div class="banner">
+        <strong>Placeholder module.</strong> Order taking, billing, and receipts are
+        scheduled for the <strong>Sprint 2 &mdash; Core Operations</strong> build.
+        Figures below are demo data.
+      </div>
+
+      <section class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Today's Sales</div><div class="kpi-value">₱12,480</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Open Orders</div><div class="kpi-value">8</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Avg. Ticket</div><div class="kpi-value">₱312</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Refunds</div><div class="kpi-value">0</div><div class="kpi-sub">demo data</div></div>
+      </section>
+
+      <div class="card">
+        <div class="card-head">Recent orders <span class="demo-note">&mdash; sample rows</span></div>
+        <table class="mock">
+          <thead><tr><th>Order #</th><th>Table</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>#1042</td><td>T-06</td><td>5</td><td>₱620</td><td><span class="tag tag-ok">Paid</span></td></tr>
+            <tr><td>#1043</td><td>T-02</td><td>3</td><td>₱410</td><td><span class="tag tag-warn">Open</span></td></tr>
+            <tr><td>#1044</td><td>Takeout</td><td>2</td><td>₱180</td><td><span class="tag tag-warn">Open</span></td></tr>
+            <tr><td>#1045</td><td>T-09</td><td>7</td><td>₱1,240</td><td><span class="tag tag-ok">Paid</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+</body>
+</html>

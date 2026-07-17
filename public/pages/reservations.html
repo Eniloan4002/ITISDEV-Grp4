@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reservations &amp; Tables &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Reservations &amp; Tables</div>
+      <a class="side-link is-active" href="/reservations">Overview</a>
+      <span class="side-link is-disabled">Reservations</span>
+      <span class="side-link is-disabled">Floor plan</span>
+      <span class="side-link is-disabled">Tables</span>
+      <span class="side-link is-disabled">Waitlist</span>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Reservations &amp; Tables</h1>
+        <span class="pill pill-sprint">Placeholder &middot; Sprint 3</span>
+      </div>
+      <div class="banner">
+        <strong>Placeholder module.</strong> Booking and table management are scheduled
+        for the <strong>Sprint 3 &mdash; Management Modules</strong> build. Figures below
+        are demo data.
+      </div>
+
+      <section class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Today's Bookings</div><div class="kpi-value">14</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Seated</div><div class="kpi-value">6</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Upcoming</div><div class="kpi-value">8</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Tables Free</div><div class="kpi-value">9</div><div class="kpi-sub">demo data</div></div>
+      </section>
+
+      <div class="card">
+        <div class="card-head">Today's reservations <span class="demo-note">&mdash; sample rows</span></div>
+        <table class="mock">
+          <thead><tr><th>Time</th><th>Guest</th><th>Party</th><th>Table</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>18:00</td><td>Fernandez</td><td>4</td><td>T-06</td><td><span class="tag tag-ok">Seated</span></td></tr>
+            <tr><td>18:30</td><td>Cruz</td><td>2</td><td>T-02</td><td><span class="tag tag-warn">Upcoming</span></td></tr>
+            <tr><td>19:00</td><td>Tan</td><td>6</td><td>T-10</td><td><span class="tag tag-warn">Upcoming</span></td></tr>
+            <tr><td>19:30</td><td>Villanueva</td><td>3</td><td>T-04</td><td><span class="tag tag-warn">Upcoming</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+</body>
+</html>

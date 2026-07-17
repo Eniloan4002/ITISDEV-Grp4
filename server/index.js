@@ -29,9 +29,20 @@ const ROLE_PAGES = {
   Staff:   ['/dashboard', '/profile'],
 };
 // Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
+// No session -> 302 /login; wrong role -> 403. Module role lists MUST mirror
+// public/js/rmis-modules.js (that only shapes the UI; THIS is the real gate).
+const ALL_ROLES = ['Admin', 'Manager', 'Cashier', 'Staff'];
 const PROTECTED_PAGES = {
+  '/dashboard': ALL_ROLES,         // apps home — any signed-in role
   '/register': ['Admin'],          // "Create User" — admin only
   '/admin-settings': ['Admin'],    // admin-only stub
+  // Sprint 2 RMIS module pages (placeholder screens, real gating).
+  '/inventory':    ['Admin', 'Manager', 'Staff'],
+  '/sales':        ['Admin', 'Manager', 'Cashier'],
+  '/attendance':   ['Admin', 'Manager'],
+  '/supplier':     ['Admin', 'Manager'],
+  '/reservations': ['Admin', 'Manager', 'Cashier'],
+  '/analytics':    ['Admin', 'Manager'],
 };
 
 // In-memory session store (SI-7). token -> { userId, email, role }.

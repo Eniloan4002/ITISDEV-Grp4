@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory &amp; Stock &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Inventory &amp; Stock</div>
+      <a class="side-link is-active" href="/inventory">Overview</a>
+      <span class="side-link is-disabled">Stock items</span>
+      <span class="side-link is-disabled">Stock movements</span>
+      <span class="side-link is-disabled">Categories</span>
+      <span class="side-link is-disabled">Adjustments</span>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Inventory &amp; Stock</h1>
+        <span class="pill pill-sprint">Placeholder &middot; Sprint 2</span>
+      </div>
+      <div class="banner">
+        <strong>Placeholder module.</strong> The layout and navigation are in place;
+        live stock tracking (items, movements, reorder alerts) is scheduled for the
+        <strong>Sprint 2 &mdash; Core Operations</strong> build. Figures below are demo data.
+      </div>
+
+      <section class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Total SKUs</div><div class="kpi-value">142</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Low Stock</div><div class="kpi-value">3</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Out of Stock</div><div class="kpi-value">1</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Stock Value</div><div class="kpi-value">₱84,200</div><div class="kpi-sub">demo data</div></div>
+      </section>
+
+      <div class="card">
+        <div class="card-head">Stock items <span class="demo-note">&mdash; sample rows</span></div>
+        <table class="mock">
+          <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Reorder pt</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Rice (25kg sack)</td><td>Dry goods</td><td>12</td><td>5</td><td><span class="tag tag-ok">OK</span></td></tr>
+            <tr><td>Pork belly</td><td>Meat</td><td>4</td><td>8</td><td><span class="tag tag-warn">Low</span></td></tr>
+            <tr><td>Coffee beans</td><td>Beverage</td><td>2</td><td>6</td><td><span class="tag tag-warn">Low</span></td></tr>
+            <tr><td>Cooking oil</td><td>Dry goods</td><td>0</td><td>4</td><td><span class="tag tag-warn">Out</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+</body>
+</html>

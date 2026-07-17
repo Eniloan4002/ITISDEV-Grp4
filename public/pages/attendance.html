@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance &amp; Manpower &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Attendance &amp; Manpower</div>
+      <a class="side-link is-active" href="/attendance">Overview</a>
+      <span class="side-link is-disabled">Time logs</span>
+      <span class="side-link is-disabled">Shifts</span>
+      <span class="side-link is-disabled">Employees</span>
+      <span class="side-link is-disabled">Leave requests</span>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Attendance &amp; Manpower</h1>
+        <span class="pill pill-sprint">Placeholder &middot; Sprint 3</span>
+      </div>
+      <div class="banner">
+        <strong>Placeholder module.</strong> Time logging, shift scheduling, and
+        staffing oversight are scheduled for the <strong>Sprint 3 &mdash; Management
+        Modules</strong> build. Figures below are demo data.
+      </div>
+
+      <section class="kpi-row">
+        <div class="kpi"><div class="kpi-label">On Shift</div><div class="kpi-value">11</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Late Today</div><div class="kpi-value">2</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">On Leave</div><div class="kpi-value">1</div><div class="kpi-sub">demo data</div></div>
+        <div class="kpi"><div class="kpi-label">Headcount</div><div class="kpi-value">40</div><div class="kpi-sub">demo data</div></div>
+      </section>
+
+      <div class="card">
+        <div class="card-head">Today's time logs <span class="demo-note">&mdash; sample rows</span></div>
+        <table class="mock">
+          <thead><tr><th>Employee</th><th>Role</th><th>Clock in</th><th>Clock out</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>J. Dela Cruz</td><td>Cashier</td><td>07:02</td><td>&mdash;</td><td><span class="tag tag-ok">On time</span></td></tr>
+            <tr><td>M. Santos</td><td>Staff</td><td>07:25</td><td>&mdash;</td><td><span class="tag tag-warn">Late</span></td></tr>
+            <tr><td>R. Reyes</td><td>Staff</td><td>06:58</td><td>&mdash;</td><td><span class="tag tag-ok">On time</span></td></tr>
+            <tr><td>A. Lim</td><td>Manager</td><td>&mdash;</td><td>&mdash;</td><td><span class="tag tag-warn">On leave</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+</body>
+</html>

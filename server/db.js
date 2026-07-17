@@ -37,6 +37,19 @@ function hashResetToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
+async function columnExists(tableName, columnName) {
+  const [rows] = await pool.query(
+    `SELECT 1
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?
+     LIMIT 1`,
+    [tableName, columnName]
+  );
+  return rows.length > 0;
+}
+
 async function init() {
   if (!initPromise) {
     initPromise = (async () => {
@@ -48,6 +61,14 @@ async function init() {
          ('Cashier', 'Handles POS transactions and payments'),
          ('Staff', 'Standard staff access')`
       );
+
+      // Older MySQL versions do not support "ADD COLUMN IF NOT EXISTS".
+      if (!(await columnExists('ingredient_inventory', 'expires_on'))) {
+        await pool.query('ALTER TABLE ingredient_inventory ADD COLUMN expires_on DATE NULL');
+      }
+      if (!(await columnExists('stock_movements', 'reference_no'))) {
+        await pool.query('ALTER TABLE stock_movements ADD COLUMN reference_no VARCHAR(100) NULL');
+      }
     })();
   }
   return initPromise;
@@ -186,7 +207,23 @@ async function markResetUsed(token) {
   return result;
 }
 
-async function listInventoryIngredients() {
+async function listInventoryIngredients(filters = {}) {
+  const where = ['i.is_active = TRUE'];
+  const params = [];
+
+  if (filters.search) {
+    where.push('i.ingredient_name LIKE ?');
+    params.push(`%${filters.search}%`);
+  }
+  if (filters.category) {
+    where.push('it.ingredient_type_name = ?');
+    params.push(filters.category);
+  }
+  if (filters.supplier) {
+    where.push('s.supplier_name = ?');
+    params.push(filters.supplier);
+  }
+
   const [rows] = await pool.query(
     `SELECT
        i.ingredient_id,
@@ -196,18 +233,152 @@ async function listInventoryIngredients() {
        COALESCE(inv.current_quantity, 0) AS current_quantity,
        i.reorder_level,
        i.max_stock_level,
+       inv.expires_on AS expiration_date,
+       s.supplier_name,
        CASE
          WHEN COALESCE(inv.current_quantity, 0) <= 0 THEN 'Out of Stock'
          WHEN COALESCE(inv.current_quantity, 0) <= i.reorder_level THEN 'Low Stock'
          ELSE 'Normal'
-       END AS stock_status
+       END AS stock_status,
+       CASE
+         WHEN inv.expires_on IS NULL THEN NULL
+         ELSE DATEDIFF(inv.expires_on, CURDATE())
+       END AS days_to_expiry
      FROM ingredients i
      LEFT JOIN ingredient_type it ON i.ingredient_type_id = it.ingredient_type_id
      LEFT JOIN ingredient_inventory inv ON i.ingredient_id = inv.ingredient_id
-     WHERE i.is_active = TRUE
-     ORDER BY i.ingredient_name ASC`
+     LEFT JOIN (
+       SELECT si.ingredient_id, MIN(s.supplier_name) AS supplier_name
+       FROM supplier_ingredients si
+       JOIN suppliers s ON s.supplier_id = si.supplier_id
+       GROUP BY si.ingredient_id
+     ) s ON s.ingredient_id = i.ingredient_id
+     WHERE ${where.join(' AND ')}
+     ORDER BY i.ingredient_name ASC`,
+    params
   );
   return rows;
+}
+
+async function listInventoryMeta() {
+  const [categories] = await pool.query(
+    'SELECT ingredient_type_name FROM ingredient_type ORDER BY ingredient_type_name ASC'
+  );
+  const [suppliers] = await pool.query(
+    'SELECT supplier_name FROM suppliers WHERE is_active = TRUE ORDER BY supplier_name ASC'
+  );
+
+  return {
+    categories: categories.map((c) => c.ingredient_type_name),
+    suppliers: suppliers.map((s) => s.supplier_name),
+  };
+}
+
+async function createIngredient({ name, unitOfMeasure, category, supplier, reorderLevel, maxStockLevel, expirationDate }) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [categoryRows] = await conn.query(
+      'SELECT ingredient_type_id FROM ingredient_type WHERE ingredient_type_name = ? LIMIT 1',
+      [category]
+    );
+    if (!categoryRows.length) {
+      throw new Error(`Category not found: ${category}`);
+    }
+
+    const [insertResult] = await conn.query(
+      `INSERT INTO ingredients
+       (ingredient_name, ingredient_type_id, unit_of_measure, reorder_level, max_stock_level, is_active)
+       VALUES (?, ?, ?, ?, ?, TRUE)`,
+      [name, categoryRows[0].ingredient_type_id, unitOfMeasure, reorderLevel, maxStockLevel]
+    );
+
+    const ingredientId = Number(insertResult.insertId);
+
+    await conn.query(
+      'INSERT INTO ingredient_inventory (ingredient_id, current_quantity, expires_on) VALUES (?, 0, ?)',
+      [ingredientId, expirationDate || null]
+    );
+
+    if (supplier) {
+      const [supplierRows] = await conn.query(
+        'SELECT supplier_id FROM suppliers WHERE supplier_name = ? LIMIT 1',
+        [supplier]
+      );
+      if (!supplierRows.length) {
+        throw new Error(`Supplier not found: ${supplier}`);
+      }
+      await conn.query(
+        `INSERT INTO supplier_ingredients (supplier_id, ingredient_id, supplier_price)
+         VALUES (?, ?, NULL)
+         ON DUPLICATE KEY UPDATE supplier_price = supplier_price`,
+        [supplierRows[0].supplier_id, ingredientId]
+      );
+    }
+
+    await conn.commit();
+    return ingredientId;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+async function recordInventoryTransaction({
+  ingredientId,
+  movementType,
+  quantity,
+  reason,
+  referenceNo,
+  userId,
+  expirationDate,
+}) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [rows] = await conn.query(
+      'SELECT current_quantity FROM ingredient_inventory WHERE ingredient_id = ? LIMIT 1 FOR UPDATE',
+      [ingredientId]
+    );
+
+    if (!rows.length) {
+      throw new Error('Ingredient inventory record not found.');
+    }
+
+    const current = Number(rows[0].current_quantity || 0);
+    const delta = Number(quantity);
+    const next = current + delta;
+
+    if (next < 0) {
+      throw new Error('Resulting quantity cannot be negative.');
+    }
+
+    await conn.query(
+      `UPDATE ingredient_inventory
+       SET current_quantity = ?, expires_on = COALESCE(?, expires_on), last_updated = CURRENT_TIMESTAMP
+       WHERE ingredient_id = ?`,
+      [next, expirationDate || null, ingredientId]
+    );
+
+    await conn.query(
+      `INSERT INTO stock_movements
+       (ingredient_id, movement_type, quantity_change, reference_no, created_by, notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [ingredientId, movementType, delta, referenceNo || null, userId, reason]
+    );
+
+    await conn.commit();
+    return { previousQuantity: current, currentQuantity: next };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 module.exports = {
@@ -222,4 +393,7 @@ module.exports = {
   getReset,
   markResetUsed,
   listInventoryIngredients,
+  listInventoryMeta,
+  createIngredient,
+  recordInventoryTransaction,
 };

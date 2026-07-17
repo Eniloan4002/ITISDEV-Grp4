@@ -145,25 +145,25 @@ FROM ingredient_type it WHERE it.ingredient_type_name = 'Packaging'
 ON DUPLICATE KEY UPDATE ingredient_type_id=VALUES(ingredient_type_id), unit_of_measure=VALUES(unit_of_measure), reorder_level=VALUES(reorder_level), max_stock_level=VALUES(max_stock_level), is_active=TRUE;
 
 -- Inventory quantities
-INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
-SELECT ingredient_id, 24.00 FROM ingredients WHERE ingredient_name = 'Chicken Breast'
-ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
+INSERT INTO ingredient_inventory (ingredient_id, current_quantity, expires_on)
+SELECT ingredient_id, 24.00, DATE_ADD(CURDATE(), INTERVAL 4 DAY) FROM ingredients WHERE ingredient_name = 'Chicken Breast'
+ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity), expires_on = DATE_ADD(CURDATE(), INTERVAL 4 DAY);
 
 INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
 SELECT ingredient_id, 18.00 FROM ingredients WHERE ingredient_name = 'Ground Pork'
 ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
 
-INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
-SELECT ingredient_id, 11.00 FROM ingredients WHERE ingredient_name = 'Boneless Bangus'
-ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
+INSERT INTO ingredient_inventory (ingredient_id, current_quantity, expires_on)
+SELECT ingredient_id, 11.00, DATE_ADD(CURDATE(), INTERVAL 2 DAY) FROM ingredients WHERE ingredient_name = 'Boneless Bangus'
+ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity), expires_on = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
-INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
-SELECT ingredient_id, 8.00 FROM ingredients WHERE ingredient_name = 'Bacon'
-ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
+INSERT INTO ingredient_inventory (ingredient_id, current_quantity, expires_on)
+SELECT ingredient_id, 8.00, DATE_ADD(CURDATE(), INTERVAL 7 DAY) FROM ingredients WHERE ingredient_name = 'Bacon'
+ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity), expires_on = DATE_ADD(CURDATE(), INTERVAL 7 DAY);
 
-INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
-SELECT ingredient_id, 15.00 FROM ingredients WHERE ingredient_name = 'Eggs'
-ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
+INSERT INTO ingredient_inventory (ingredient_id, current_quantity, expires_on)
+SELECT ingredient_id, 15.00, DATE_ADD(CURDATE(), INTERVAL 6 DAY) FROM ingredients WHERE ingredient_name = 'Eggs'
+ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity), expires_on = DATE_ADD(CURDATE(), INTERVAL 6 DAY);
 
 INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
 SELECT ingredient_id, 35.00 FROM ingredients WHERE ingredient_name = 'Garlic Rice (Cooked)'
@@ -205,9 +205,9 @@ INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
 SELECT ingredient_id, 2.00 FROM ingredients WHERE ingredient_name = 'Sea Salt'
 ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
 
-INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
-SELECT ingredient_id, 8.00 FROM ingredients WHERE ingredient_name = 'Fresh Milk'
-ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity);
+INSERT INTO ingredient_inventory (ingredient_id, current_quantity, expires_on)
+SELECT ingredient_id, 8.00, DATE_ADD(CURDATE(), INTERVAL 3 DAY) FROM ingredients WHERE ingredient_name = 'Fresh Milk'
+ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity), expires_on = DATE_ADD(CURDATE(), INTERVAL 3 DAY);
 
 INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
 SELECT ingredient_id, 3.00 FROM ingredients WHERE ingredient_name = 'Coffee Beans'

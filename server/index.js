@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const dbApi = require('./db');
 const { hashPassword, verifyPassword } = require('./password');
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 // SI-10 role-based visible modules. '*' = all pages.
@@ -19,14 +19,14 @@ const ROLE_PAGES = {
   Admin: ['*'],
   Manager: ['/dashboard', '/profile', '/modules', '/inventory'],
   Cashier: ['/dashboard', '/profile'],
-  Staff: ['/dashboard', '/profile'],
+  Staff: ['/dashboard', '/profile', '/inventory'],
 };
 
 // Pages that require auth + specific roles.
 const PROTECTED_PAGES = {
   '/register': ['Admin'],
   '/admin-settings': ['Admin'],
-  '/inventory': ['Admin', 'Manager'],
+  '/inventory': ['Admin', 'Manager', 'Staff'],
 };
 
 // In-memory session store (MVP): restart forces re-login.
@@ -329,16 +329,141 @@ async function handleResetConfirm(req, res) {
 async function handleGetInventory(req, res) {
   const s = getSession(req);
   if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
-  if (!['Admin', 'Manager'].includes(s.role)) {
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
     return sendJson(res, 403, { message: 'Unauthorized.' });
   }
 
   try {
-    const items = await dbApi.listInventoryIngredients();
+    const parsed = new URL(req.url, 'http://localhost');
+    const filters = {
+      search: (parsed.searchParams.get('search') || '').trim(),
+      category: (parsed.searchParams.get('category') || '').trim(),
+      supplier: (parsed.searchParams.get('supplier') || '').trim(),
+    };
+    const items = await dbApi.listInventoryIngredients(filters);
     return sendJson(res, 200, { items });
   } catch (err) {
     console.error('[inventory] failed:', err);
     return sendJson(res, 500, { message: 'Could not load inventory.' });
+  }
+}
+
+async function handleGetInventoryMeta(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  try {
+    const meta = await dbApi.listInventoryMeta();
+    return sendJson(res, 200, meta);
+  } catch (err) {
+    console.error('[inventory:meta] failed:', err);
+    return sendJson(res, 500, { message: 'Could not load inventory metadata.' });
+  }
+}
+
+async function handleCreateIngredient(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  const errors = {};
+  if (!data.name || !data.name.trim()) errors.name = 'Ingredient name is required.';
+  if (!data.unitOfMeasure || !data.unitOfMeasure.trim()) errors.unitOfMeasure = 'Unit of measure is required.';
+  if (!data.category || !data.category.trim()) errors.category = 'Category is required.';
+  if (!data.supplier || !data.supplier.trim()) errors.supplier = 'Supplier is required.';
+
+  if (Object.keys(errors).length > 0) {
+    return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
+  }
+
+  try {
+    const ingredientId = await dbApi.createIngredient({
+      name: data.name.trim(),
+      unitOfMeasure: data.unitOfMeasure.trim(),
+      category: data.category.trim(),
+      supplier: data.supplier.trim(),
+      reorderLevel: Number(data.reorderLevel || 0),
+      maxStockLevel: Number(data.maxStockLevel || 0),
+      expirationDate: data.expirationDate || null,
+    });
+    return sendJson(res, 201, { message: 'Ingredient created.', ingredientId });
+  } catch (err) {
+    console.error('[inventory:create] failed:', err);
+    if (err && /duplicate|Duplicate|ER_DUP_ENTRY/.test(String(err.message))) {
+      return sendJson(res, 409, { message: 'Ingredient name already exists.' });
+    }
+    return sendJson(res, 500, { message: 'Could not create ingredient.' });
+  }
+}
+
+async function handleInventoryTransaction(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  const errors = {};
+  if (!data.ingredientId) errors.ingredientId = 'Ingredient is required.';
+  if (!data.transactionType) errors.transactionType = 'Transaction type is required.';
+  if (!Number.isFinite(Number(data.quantity)) || Number(data.quantity) <= 0) {
+    errors.quantity = 'Quantity must be greater than 0.';
+  }
+
+  const typeMap = {
+    receiving: { movementType: 'Purchase Received', sign: 1 },
+    consumption: { movementType: 'POS Usage', sign: -1 },
+    adjustment_increase: { movementType: 'Manual Adjustment', sign: 1 },
+    adjustment_decrease: { movementType: 'Manual Adjustment', sign: -1 },
+  };
+
+  const mapped = typeMap[data.transactionType];
+  if (!mapped) errors.transactionType = 'Unknown transaction type.';
+
+  if (Object.keys(errors).length > 0) {
+    return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
+  }
+
+  try {
+    const result = await dbApi.recordInventoryTransaction({
+      ingredientId: Number(data.ingredientId),
+      movementType: mapped.movementType,
+      quantity: mapped.sign * Number(data.quantity),
+      reason: (data.reason || '').trim() || 'Inventory transaction',
+      referenceNo: (data.referenceNo || '').trim() || null,
+      userId: s.userId,
+      expirationDate: data.expirationDate || null,
+    });
+    return sendJson(res, 200, {
+      message: 'Inventory updated.',
+      previousQuantity: result.previousQuantity,
+      currentQuantity: result.currentQuantity,
+    });
+  } catch (err) {
+    console.error('[inventory:transaction] failed:', err);
+    if (/negative/i.test(String(err.message))) {
+      return sendJson(res, 400, { message: 'Transaction would make quantity negative.' });
+    }
+    return sendJson(res, 500, { message: 'Could not apply transaction.' });
   }
 }
 
@@ -446,8 +571,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
       return handleResetConfirm(req, res);
     }
-    if (req.method === 'GET' && req.url === '/api/inventory') {
+    if (req.method === 'GET' && req.url.startsWith('/api/inventory/meta')) {
+      return handleGetInventoryMeta(req, res);
+    }
+    if (req.method === 'GET' && req.url.startsWith('/api/inventory')) {
       return handleGetInventory(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/api/inventory') {
+      return handleCreateIngredient(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/api/inventory/transactions') {
+      return handleInventoryTransaction(req, res);
     }
 
     if (req.method === 'GET') {

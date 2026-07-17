@@ -226,6 +226,39 @@ section {
   margin-bottom: 24px;
 }
 
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.inventory-card {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fff;
+}
+
+.inventory-card h2 {
+  margin-bottom: 12px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.compact-actions {
+  margin-top: 6px;
+}
+
+.compact-actions button {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
 .page-footer {
   margin-top: 24px;
   text-align: center;
@@ -255,6 +288,14 @@ section {
   background: #fafafa;
 }
 
+.data-table tr.expiring-soon td {
+  background: #fff5df;
+}
+
+.data-table tr.expired td {
+  background: #fee7e7;
+}
+
 .status-pill {
   display: inline-block;
   padding: 3px 8px;
@@ -276,4 +317,14 @@ section {
 .status-pill.is-danger {
   background: #fdeaea;
   color: #b02727;
+}
+
+@media (max-width: 900px) {
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters {
+    grid-template-columns: 1fr;
+  }
 }

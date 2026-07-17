@@ -11,6 +11,7 @@ SELECT
     it.ingredient_type_name,
     i.unit_of_measure,
     inv.current_quantity,
+    inv.expires_on,
     i.reorder_level,
     CASE
         WHEN inv.current_quantity <= 0 THEN 'Out of Stock'

@@ -10,10 +10,123 @@
   <main class="container container-wide">
     <header class="page-header">
       <h1>Ingredient Inventory</h1>
-      <p class="subtitle">Current ingredient stock levels and reorder status.</p>
+      <p class="subtitle">Track stock, expiration, suppliers, and inventory transactions.</p>
     </header>
 
     <p id="form-message" class="form-message" role="alert" hidden></p>
+
+    <section class="inventory-grid">
+      <article class="inventory-card">
+        <h2>Create Ingredient</h2>
+        <form id="ingredient-form" novalidate>
+          <div class="field">
+            <label for="ingredient-name">Name</label>
+            <input type="text" id="ingredient-name" required>
+          </div>
+          <div class="field">
+            <label for="ingredient-unit">Unit of Measure</label>
+            <input type="text" id="ingredient-unit" placeholder="kg, L, pcs" required>
+          </div>
+          <div class="field">
+            <label for="ingredient-category">Category</label>
+            <select id="ingredient-category" required>
+              <option value="">-- Select category --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ingredient-supplier">Supplier</label>
+            <select id="ingredient-supplier" required>
+              <option value="">-- Select supplier --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="ingredient-reorder">Reorder Level</label>
+            <input type="number" min="0" step="0.01" id="ingredient-reorder" value="0" required>
+          </div>
+          <div class="field">
+            <label for="ingredient-max">Max Stock Level</label>
+            <input type="number" min="0" step="0.01" id="ingredient-max" value="0" required>
+          </div>
+          <div class="field">
+            <label for="ingredient-expiration">Expiration Date (optional)</label>
+            <input type="date" id="ingredient-expiration">
+          </div>
+          <div class="actions compact-actions">
+            <button type="submit">Add Ingredient</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="inventory-card">
+        <h2>Record Transaction</h2>
+        <form id="transaction-form" novalidate>
+          <div class="field">
+            <label for="tx-ingredient">Ingredient</label>
+            <select id="tx-ingredient" required>
+              <option value="">-- Select ingredient --</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tx-type">Transaction Type</label>
+            <select id="tx-type" required>
+              <option value="">-- Select type --</option>
+              <option value="receiving">Receiving</option>
+              <option value="consumption">Consumption</option>
+              <option value="adjustment_increase">Adjustment Increase</option>
+              <option value="adjustment_decrease">Adjustment Decrease</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tx-quantity">Quantity</label>
+            <input type="number" min="0.01" step="0.01" id="tx-quantity" required>
+          </div>
+          <div class="field">
+            <label for="tx-reference">Reference</label>
+            <input type="text" id="tx-reference" placeholder="PO number, batch id, etc.">
+          </div>
+          <div class="field">
+            <label for="tx-reason">Reason / Note</label>
+            <input type="text" id="tx-reason" placeholder="Receiving from supplier, wastage, count correction" required>
+          </div>
+          <div class="field">
+            <label for="tx-expiration">Expiration Date (for receiving)</label>
+            <input type="date" id="tx-expiration">
+          </div>
+          <div class="actions compact-actions">
+            <button type="submit">Record Transaction</button>
+          </div>
+        </form>
+      </article>
+    </section>
+
+    <section class="inventory-card">
+      <h2>Filters</h2>
+      <form id="filter-form" class="filters" novalidate>
+        <div class="field">
+          <label for="filter-search">Ingredient Name</label>
+          <input type="text" id="filter-search" placeholder="Search ingredient...">
+        </div>
+        <div class="field">
+          <label for="filter-category">Category</label>
+          <select id="filter-category">
+            <option value="">All categories</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-supplier">Supplier</label>
+          <select id="filter-supplier">
+            <option value="">All suppliers</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-expiry-days">Highlight expiry within days</label>
+          <input type="number" min="1" step="1" id="filter-expiry-days" value="5">
+        </div>
+        <div class="actions compact-actions">
+          <button type="submit">Apply Filters</button>
+        </div>
+      </form>
+    </section>
 
     <section>
       <div class="table-wrap">
@@ -21,21 +134,23 @@
           <thead>
             <tr>
               <th>Ingredient</th>
-              <th>Type</th>
+              <th>Category</th>
+              <th>Supplier</th>
               <th>Current Qty</th>
               <th>Unit</th>
               <th>Reorder Level</th>
+              <th>Expiration Date</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody id="inventory-body">
             <tr>
-              <td colspan="6" class="muted">Loading inventory...</td>
+              <td colspan="8" class="muted">Loading inventory...</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p id="inventory-help" class="field-hint">Only Admin and Manager roles can access this page.</p>
+      <p id="inventory-help" class="field-hint">Inventory changes are recorded with timestamp and user traceability.</p>
     </section>
 
     <div class="actions">

@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS ingredients (
 CREATE TABLE IF NOT EXISTS ingredient_inventory (
     ingredient_id INT PRIMARY KEY,
     current_quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+    expires_on DATE NULL,
     last_updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (ingredient_id) REFERENCES ingredients(ingredient_id)
         ON UPDATE CASCADE ON DELETE CASCADE
@@ -132,6 +133,7 @@ CREATE TABLE IF NOT EXISTS stock_movements (
     ingredient_id INT NOT NULL,
     movement_type ENUM('Purchase Received', 'Manual Adjustment', 'POS Usage', 'Waste', 'Return') NOT NULL,
     quantity_change DECIMAL(10,2) NOT NULL,
+    reference_no VARCHAR(100),
     reference_table VARCHAR(50),
     reference_id INT,
     created_by INT,

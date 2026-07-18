@@ -85,6 +85,43 @@ db.exec(`
     received_qty REAL NOT NULL DEFAULT 0,
     notes TEXT NOT NULL DEFAULT ''
   );
+
+  -- ===== Sprint 3: Attendance & Manpower =====
+  -- One row per shift worked. An "open" row has time_out = '' (clocked in,
+  -- not yet out); a user may only have one open row at a time.
+  CREATE TABLE IF NOT EXISTS attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    employee_name TEXT NOT NULL,        -- snapshot at time-in
+    work_date TEXT NOT NULL,            -- 'YYYY-MM-DD' (local)
+    time_in TEXT NOT NULL,             -- ISO timestamp
+    time_out TEXT NOT NULL DEFAULT '', -- ISO timestamp or '' while open
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS shifts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    employee_name TEXT NOT NULL,        -- snapshot
+    shift_date TEXT NOT NULL,           -- 'YYYY-MM-DD'
+    start_time TEXT NOT NULL,           -- 'HH:MM' (24h)
+    end_time TEXT NOT NULL,             -- 'HH:MM' (24h)
+    created_by INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS leave_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    employee_name TEXT NOT NULL,        -- snapshot
+    leave_type TEXT NOT NULL,           -- Vacation | Sick | Emergency | Personal
+    start_date TEXT NOT NULL,           -- 'YYYY-MM-DD'
+    end_date TEXT NOT NULL,             -- 'YYYY-MM-DD'
+    reason TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'Pending', -- Pending | Approved | Rejected
+    reviewed_by INTEGER,
+    reviewed_by_name TEXT NOT NULL DEFAULT '',
+    reviewed_at TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
 `);
 
 // node:sqlite's DatabaseSync has no better-sqlite3-style db.transaction();
@@ -293,6 +330,122 @@ function addPoItemReceived(itemId, qty) {
   return db.prepare('UPDATE po_items SET received_qty = received_qty + ? WHERE id = ?').run(qty, itemId);
 }
 
+// ===== Sprint 3: Employees (users as the employee directory) =====
+
+function listUsers() {
+  return db.prepare('SELECT id, full_name, email, role FROM users ORDER BY full_name').all();
+}
+
+// ===== Sprint 3: Attendance =====
+
+// The user's currently-open attendance row (clocked in, not yet out), or undefined.
+function findOpenAttendance(userId) {
+  return db.prepare("SELECT * FROM attendance WHERE user_id = ? AND time_out = '' ORDER BY id DESC LIMIT 1").get(userId);
+}
+
+function createTimeIn({ userId, employeeName, workDate, timeIn }) {
+  const info = db.prepare(
+    'INSERT INTO attendance (user_id, employee_name, work_date, time_in, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(userId, employeeName, workDate, timeIn, new Date().toISOString());
+  return Number(info.lastInsertRowid);
+}
+
+function setTimeOut(id, timeOut) {
+  return db.prepare('UPDATE attendance SET time_out = ? WHERE id = ?').run(timeOut, id);
+}
+
+// All attendance rows, optionally filtered by employee and/or date. Newest first.
+function listAttendance({ userId, date } = {}) {
+  const where = [];
+  const params = [];
+  if (userId) { where.push('user_id = ?'); params.push(userId); }
+  if (date) { where.push('work_date = ?'); params.push(date); }
+  const sql = 'SELECT * FROM attendance ' +
+    (where.length ? 'WHERE ' + where.join(' AND ') + ' ' : '') +
+    'ORDER BY work_date DESC, id DESC';
+  return db.prepare(sql).all(...params);
+}
+
+// ===== Sprint 3: Shifts / schedules =====
+
+function findShiftById(id) {
+  return db.prepare('SELECT * FROM shifts WHERE id = ?').get(id);
+}
+
+// Shifts for one employee on one date — used for overlap checks.
+function listShiftsForDate(userId, shiftDate) {
+  return db.prepare('SELECT * FROM shifts WHERE user_id = ? AND shift_date = ?').all(userId, shiftDate);
+}
+
+function listShifts({ userId, date } = {}) {
+  const where = [];
+  const params = [];
+  if (userId) { where.push('user_id = ?'); params.push(userId); }
+  if (date) { where.push('shift_date = ?'); params.push(date); }
+  const sql = 'SELECT * FROM shifts ' +
+    (where.length ? 'WHERE ' + where.join(' AND ') + ' ' : '') +
+    'ORDER BY shift_date DESC, start_time';
+  return db.prepare(sql).all(...params);
+}
+
+function createShift({ userId, employeeName, shiftDate, startTime, endTime, createdBy }) {
+  const info = db.prepare(
+    'INSERT INTO shifts (user_id, employee_name, shift_date, start_time, end_time, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(userId, employeeName, shiftDate, startTime, endTime, createdBy, new Date().toISOString());
+  return Number(info.lastInsertRowid);
+}
+
+function updateShift(id, { userId, employeeName, shiftDate, startTime, endTime }) {
+  return db.prepare(
+    'UPDATE shifts SET user_id = ?, employee_name = ?, shift_date = ?, start_time = ?, end_time = ? WHERE id = ?'
+  ).run(userId, employeeName, shiftDate, startTime, endTime, id);
+}
+
+function deleteShift(id) {
+  return db.prepare('DELETE FROM shifts WHERE id = ?').run(id);
+}
+
+// ===== Sprint 3: Leave requests =====
+
+function findLeaveById(id) {
+  return db.prepare('SELECT * FROM leave_requests WHERE id = ?').get(id);
+}
+
+function listLeave({ userId, status } = {}) {
+  const where = [];
+  const params = [];
+  if (userId) { where.push('user_id = ?'); params.push(userId); }
+  if (status) { where.push('status = ?'); params.push(status); }
+  const sql = 'SELECT * FROM leave_requests ' +
+    (where.length ? 'WHERE ' + where.join(' AND ') + ' ' : '') +
+    'ORDER BY id DESC';
+  return db.prepare(sql).all(...params);
+}
+
+function createLeave({ userId, employeeName, leaveType, startDate, endDate, reason }) {
+  const info = db.prepare(
+    'INSERT INTO leave_requests (user_id, employee_name, leave_type, start_date, end_date, reason, status, created_at) ' +
+    "VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?)"
+  ).run(userId, employeeName, leaveType, startDate, endDate, reason || '', new Date().toISOString());
+  return Number(info.lastInsertRowid);
+}
+
+function setLeaveStatus(id, status, reviewedBy, reviewedByName) {
+  return db.prepare(
+    'UPDATE leave_requests SET status = ?, reviewed_by = ?, reviewed_by_name = ?, reviewed_at = ? WHERE id = ?'
+  ).run(status, reviewedBy, reviewedByName || '', new Date().toISOString(), id);
+}
+
+// Approved leave overlapping a given date (or all approved for a user). Used to
+// reflect approved leave in the schedule view.
+function listApprovedLeave({ userId, date } = {}) {
+  const where = ["status = 'Approved'"];
+  const params = [];
+  if (userId) { where.push('user_id = ?'); params.push(userId); }
+  if (date) { where.push('start_date <= ? AND end_date >= ?'); params.push(date, date); }
+  return db.prepare('SELECT * FROM leave_requests WHERE ' + where.join(' AND ') + ' ORDER BY start_date').all(...params);
+}
+
 module.exports = {
   db,
   findUserByEmail, findUserById, createUser, updateProfile, updatePassword, createReset, getReset, markResetUsed,
@@ -305,4 +458,9 @@ module.exports = {
   // purchase orders
   createPurchaseOrder, listPurchaseOrders, findPurchaseOrderById, listPoItems, findPoItemById,
   setPurchaseOrderStatus, addPoItemReceived,
+  // employees / attendance / schedules / leave
+  listUsers,
+  findOpenAttendance, createTimeIn, setTimeOut, listAttendance,
+  findShiftById, listShiftsForDate, listShifts, createShift, updateShift, deleteShift,
+  findLeaveById, listLeave, createLeave, setLeaveStatus, listApprovedLeave,
 };

@@ -17,6 +17,7 @@ const path = require('path');
 const crypto = require('crypto');
 const dbApi = require('./db');
 const rmis = require('./rmis');
+const attendance = require('./attendance');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = 3000;
@@ -25,9 +26,9 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 // SI-10 — which role may access which protected pages. '*' = all pages.
 const ROLE_PAGES = {
   Admin:   ['*'],
-  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/stock-alerts', '/stock-adjustment', '/purchase-orders'],
-  Cashier: ['/dashboard', '/profile'],
-  Staff:   ['/dashboard', '/profile', '/inventory', '/stock-alerts'],
+  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/stock-alerts', '/stock-adjustment', '/purchase-orders', '/attendance', '/schedules', '/leave-requests'],
+  Cashier: ['/dashboard', '/profile', '/attendance', '/schedules', '/leave-requests'],
+  Staff:   ['/dashboard', '/profile', '/inventory', '/stock-alerts', '/attendance', '/schedules', '/leave-requests'],
 };
 // Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
 // No session -> 302 /login; wrong role -> 403. Module role lists MUST mirror
@@ -44,7 +45,11 @@ const PROTECTED_PAGES = {
   '/stock-adjustment': ['Admin', 'Manager'],
   '/purchase-orders':  ['Admin', 'Manager'],
   '/sales':        ['Admin', 'Manager', 'Cashier'],
-  '/attendance':   ['Admin', 'Manager'],
+  // Attendance & Manpower — every employee can clock in, view their own
+  // schedule, and file leave; managers manage everyone (enforced in the API).
+  '/attendance':     ['Admin', 'Manager', 'Cashier', 'Staff'],
+  '/schedules':      ['Admin', 'Manager', 'Cashier', 'Staff'],
+  '/leave-requests': ['Admin', 'Manager', 'Cashier', 'Staff'],
   '/supplier':     ['Admin', 'Manager'],
   '/reservations': ['Admin', 'Manager', 'Cashier'],
   '/analytics':    ['Admin', 'Manager'],
@@ -447,14 +452,17 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
     return handleResetConfirm(req, res);
   }
-  // Sprint 2 — delegate all remaining /api/* routes to the RMIS inventory API.
+  // Delegate remaining /api/* routes to the module APIs (inventory, then
+  // attendance). Each router returns true once it has handled the request.
   if (req.url.startsWith('/api/')) {
-    rmis.route(req, res, getSession)
-      .then((handled) => { if (!handled) { res.writeHead(404); res.end('Not found'); } })
-      .catch((err) => {
-        console.error('[rmis] route error:', err);
-        if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Server error.' })); }
-      });
+    (async () => {
+      if (await rmis.route(req, res, getSession)) return;
+      if (await attendance.route(req, res, getSession)) return;
+      res.writeHead(404); res.end('Not found');
+    })().catch((err) => {
+      console.error('[api] route error:', err);
+      if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Server error.' })); }
+    });
     return;
   }
   if (req.method === 'GET') {

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Requests &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Attendance &amp; Manpower</div>
+      <a class="side-link" href="/attendance">Time Clock</a>
+      <a class="side-link" href="/schedules">Schedules</a>
+      <a class="side-link is-active" href="/leave-requests">Leave Requests</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Leave Requests</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <!-- Anyone can file a leave request. -->
+      <div class="card">
+        <div class="card-head">Submit a leave request</div>
+        <div class="modal-body">
+          <form id="leave-form" novalidate>
+            <div class="form-grid">
+              <div class="field-inline"><label>Leave type *</label>
+                <select class="rmis-select" name="leaveType" required>
+                  <option value="">— select —</option>
+                  <option>Vacation</option><option>Sick</option>
+                  <option>Emergency</option><option>Personal</option>
+                </select></div>
+              <div class="field-inline"><label>&nbsp;</label><span></span></div>
+              <div class="field-inline"><label>Start date *</label>
+                <input class="rmis-input" name="startDate" type="date" required></div>
+              <div class="field-inline"><label>End date *</label>
+                <input class="rmis-input" name="endDate" type="date" required></div>
+              <div class="field-inline full"><label>Reason *</label>
+                <input class="rmis-input" name="reason" placeholder="e.g. Family event" required></div>
+            </div>
+            <div class="field-err" id="leave-err"></div>
+            <div style="margin-top:14px"><button type="submit" class="btn-primary" id="leave-submit">Submit request</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="field-inline" id="filter-emp-wrap" hidden>
+          <label for="f-emp">Employee</label>
+          <select class="rmis-select" id="f-emp"><option value="">All employees</option></select>
+        </div>
+        <div class="field-inline">
+          <label for="f-status">Status</label>
+          <select class="rmis-select" id="f-status">
+            <option value="">All statuses</option>
+            <option>Pending</option><option>Approved</option><option>Rejected</option>
+          </select>
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button class="btn-ghost" id="f-clear">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head" id="list-head">My leave requests</div>
+        <table class="mock">
+          <thead><tr>
+            <th id="th-emp" hidden>Employee</th><th>Type</th><th>Dates</th><th>Reason</th>
+            <th>Status</th><th>Reviewed by</th><th id="th-actions"></th>
+          </tr></thead>
+          <tbody id="leave-body"></tbody>
+        </table>
+        <div class="empty-state" id="leave-empty" hidden>No leave requests to show.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/leave-requests.js"></script>
+</body>
+</html>

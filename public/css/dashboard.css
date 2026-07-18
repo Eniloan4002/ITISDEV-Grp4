@@ -468,6 +468,41 @@ table.mock tr.row-expiring td { box-shadow: inset 3px 0 0 #d98a2b; }
   .line-row { grid-template-columns: 1fr 1fr; }
 }
 
+/* ---------- Sprint 3: Attendance & Manpower ---------- */
+
+/* Time-clock hero */
+.clock-hero {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+  padding: 22px; margin-bottom: 22px;
+}
+.clock-now { flex: 1 1 auto; }
+.clock-now .clock-time { font-size: 32px; font-weight: 700; color: var(--tc-brown); font-variant-numeric: tabular-nums; }
+.clock-now .clock-date { color: var(--tc-muted); font-size: 14px; }
+.clock-state {
+  font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+  display: inline-block; margin-top: 6px;
+}
+.clock-state.on  { background: #e6efe0; color: var(--tc-olive); }
+.clock-state.off { background: var(--tc-cream-2); color: var(--tc-brown-soft); }
+.clock-actions { display: flex; gap: 12px; }
+.btn-clock {
+  font-family: inherit; font-size: 16px; font-weight: 700;
+  border: none; border-radius: 12px; padding: 16px 26px; cursor: pointer; color: #fff;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.btn-clock:disabled { opacity: 0.45; cursor: default; }
+.btn-clock-in  { background: var(--tc-olive); }
+.btn-clock-out { background: var(--tc-terracotta); }
+.btn-clock:not(:disabled):hover { filter: brightness(0.94); }
+
+/* Leave / request status tags */
+.tag-pending  { background: #fbeecb; color: #9a6b1a; }
+.tag-approved { background: #e6efe0; color: var(--tc-olive); }
+.tag-rejected { background: #f4d3cd; color: #a5311f; }
+
+/* Schedule leave row */
+table.mock tr.row-leave td { background: #fbeecb55; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .kpi-row { grid-template-columns: repeat(2, 1fr); }

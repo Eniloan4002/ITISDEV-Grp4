@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance &amp; Manpower &mdash; AM Restaurant RMIS</title>
+  <title>Time Clock &mdash; AM Restaurant RMIS</title>
   <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body class="app">
@@ -21,46 +21,71 @@
     <aside class="sidebar">
       <a class="side-back" href="/dashboard">&larr; All apps</a>
       <div class="side-section">Attendance &amp; Manpower</div>
-      <a class="side-link is-active" href="/attendance">Overview</a>
-      <span class="side-link is-disabled">Time logs</span>
-      <span class="side-link is-disabled">Shifts</span>
-      <span class="side-link is-disabled">Employees</span>
-      <span class="side-link is-disabled">Leave requests</span>
+      <a class="side-link is-active" href="/attendance">Time Clock</a>
+      <a class="side-link" href="/schedules">Schedules</a>
+      <a class="side-link" href="/leave-requests">Leave Requests</a>
     </aside>
 
     <main class="content">
       <div class="page-head">
-        <h1>Attendance &amp; Manpower</h1>
-        <span class="pill pill-sprint">Placeholder &middot; Sprint 3</span>
-      </div>
-      <div class="banner">
-        <strong>Placeholder module.</strong> Time logging, shift scheduling, and
-        staffing oversight are scheduled for the <strong>Sprint 3 &mdash; Management
-        Modules</strong> build. Figures below are demo data.
+        <h1>Time Clock</h1>
+        <span class="pill pill-live">Live</span>
       </div>
 
-      <section class="kpi-row">
-        <div class="kpi"><div class="kpi-label">On Shift</div><div class="kpi-value">11</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Late Today</div><div class="kpi-value">2</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">On Leave</div><div class="kpi-value">1</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Headcount</div><div class="kpi-value">40</div><div class="kpi-sub">demo data</div></div>
-      </section>
+      <div class="notice" id="page-notice" hidden></div>
+
+      <div class="card clock-hero">
+        <div class="clock-now">
+          <div class="clock-time" id="clock-time">--:--</div>
+          <div class="clock-date" id="clock-date"></div>
+          <span class="clock-state off" id="clock-state">Not clocked in</span>
+        </div>
+        <div class="clock-actions">
+          <button class="btn-clock btn-clock-in" id="btn-in">Time In</button>
+          <button class="btn-clock btn-clock-out" id="btn-out" disabled>Time Out</button>
+        </div>
+      </div>
 
       <div class="card">
-        <div class="card-head">Today's time logs <span class="demo-note">&mdash; sample rows</span></div>
+        <div class="card-head">My attendance logs</div>
         <table class="mock">
-          <thead><tr><th>Employee</th><th>Role</th><th>Clock in</th><th>Clock out</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>J. Dela Cruz</td><td>Cashier</td><td>07:02</td><td>&mdash;</td><td><span class="tag tag-ok">On time</span></td></tr>
-            <tr><td>M. Santos</td><td>Staff</td><td>07:25</td><td>&mdash;</td><td><span class="tag tag-warn">Late</span></td></tr>
-            <tr><td>R. Reyes</td><td>Staff</td><td>06:58</td><td>&mdash;</td><td><span class="tag tag-ok">On time</span></td></tr>
-            <tr><td>A. Lim</td><td>Manager</td><td>&mdash;</td><td>&mdash;</td><td><span class="tag tag-warn">On leave</span></td></tr>
-          </tbody>
+          <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th class="num">Hours</th></tr></thead>
+          <tbody id="my-logs"></tbody>
         </table>
+        <div class="empty-state" id="my-empty" hidden>No attendance records yet. Clock in to start.</div>
+      </div>
+
+      <!-- Managers only: everyone's logs, searchable by employee + date. -->
+      <div id="mgr-section" hidden>
+        <h2 class="section-title">All employee logs</h2>
+        <div class="toolbar">
+          <div class="field-inline">
+            <label for="f-emp">Employee</label>
+            <select class="rmis-select" id="f-emp"><option value="">All employees</option></select>
+          </div>
+          <div class="field-inline">
+            <label for="f-date">Date</label>
+            <input class="rmis-input" id="f-date" type="date">
+          </div>
+          <div class="field-inline">
+            <label>&nbsp;</label>
+            <button class="btn-ghost" id="f-clear">Clear</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">Attendance records</div>
+          <table class="mock">
+            <thead><tr><th>Employee</th><th>Date</th><th>Time In</th><th>Time Out</th><th class="num">Hours</th><th>Status</th></tr></thead>
+            <tbody id="all-logs"></tbody>
+          </table>
+          <div class="empty-state" id="all-empty" hidden>No records match the filter.</div>
+        </div>
       </div>
     </main>
   </div>
 
   <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/attendance.js"></script>
 </body>
 </html>

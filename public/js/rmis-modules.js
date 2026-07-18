@@ -31,7 +31,7 @@
     { key: 'alerts',       href: '/stock-alerts',     label: 'Stock Alerts',         desc: 'Low & out-of-stock items',  roles: ['Admin', 'Manager', 'Staff'] },
     { key: 'adjustment',   href: '/stock-adjustment', label: 'Stock Adjustment',     desc: 'Damage, spoilage, returns', roles: ['Admin', 'Manager'] },
     { key: 'purchase',     href: '/purchase-orders',  label: 'Purchase Orders',      desc: 'Procure & receive goods',   roles: ['Admin', 'Manager'] },
-    { key: 'sales',        href: '/sales',        label: 'Sales & Billing',     desc: 'Transactions & receipts',    sprint: 2, roles: ['Admin', 'Manager', 'Cashier'] },
+    { key: 'sales',        href: '/sales',        label: 'Sales & Billing',     desc: 'Bills, payments & receipts', roles: ['Admin', 'Manager', 'Cashier'] },
     { key: 'attendance',   href: '/attendance',   label: 'Attendance & Manpower', desc: 'Time logs, schedules, leave', roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
     { key: 'supplier',     href: '/supplier',     label: 'Supplier & Commissary', desc: 'Procurement & supply',     sprint: 3, roles: ['Admin', 'Manager'] },
     { key: 'reservations', href: '/reservations', label: 'Reservations & Tables', desc: 'Booking & table management', sprint: 3, roles: ['Admin', 'Manager', 'Cashier'] },

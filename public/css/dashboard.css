@@ -503,6 +503,15 @@ table.mock tr.row-expiring td { box-shadow: inset 3px 0 0 #d98a2b; }
 /* Schedule leave row */
 table.mock tr.row-leave td { background: #fbeecb55; }
 
+/* ---------- Sales & Billing: receipt totals ---------- */
+.receipt-totals { display: grid; gap: 4px; margin-left: auto; max-width: 320px; }
+.receipt-totals > div { display: flex; justify-content: space-between; font-size: 14px; color: var(--tc-brown-soft); }
+.receipt-totals > div > span:last-child { font-variant-numeric: tabular-nums; }
+.receipt-totals .grand {
+  border-top: 1px solid var(--tc-border); margin-top: 4px; padding-top: 8px;
+  font-size: 17px; font-weight: 700; color: var(--tc-brown);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
   .kpi-row { grid-template-columns: repeat(2, 1fr); }

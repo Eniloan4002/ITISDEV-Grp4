@@ -21,46 +21,56 @@
     <aside class="sidebar">
       <a class="side-back" href="/dashboard">&larr; All apps</a>
       <div class="side-section">Sales &amp; Billing</div>
-      <a class="side-link is-active" href="/sales">Overview</a>
-      <span class="side-link is-disabled">Orders</span>
-      <span class="side-link is-disabled">Invoices</span>
-      <span class="side-link is-disabled">Receipts</span>
-      <span class="side-link is-disabled">Payments</span>
+      <a class="side-link is-active" href="/sales">Bills &amp; Receipts</a>
     </aside>
 
     <main class="content">
       <div class="page-head">
         <h1>Sales &amp; Billing</h1>
-        <span class="pill pill-sprint">Placeholder &middot; Sprint 2</span>
-      </div>
-      <div class="banner">
-        <strong>Placeholder module.</strong> Order taking, billing, and receipts are
-        scheduled for the <strong>Sprint 2 &mdash; Core Operations</strong> build.
-        Figures below are demo data.
+        <span class="pill pill-live">Live</span>
       </div>
 
-      <section class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Today's Sales</div><div class="kpi-value">₱12,480</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Open Orders</div><div class="kpi-value">8</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Avg. Ticket</div><div class="kpi-value">₱312</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Refunds</div><div class="kpi-value">0</div><div class="kpi-sub">demo data</div></div>
-      </section>
+      <div class="notice" id="page-notice" hidden></div>
+
+      <section class="kpi-row" id="kpi-row"></section>
+
+      <div class="toolbar">
+        <div class="field-inline">
+          <label for="f-status">Status</label>
+          <select class="rmis-select" id="f-status">
+            <option value="">All statuses</option>
+            <option>Open</option><option>Paid</option><option>Void</option>
+          </select>
+        </div>
+        <div class="field-inline">
+          <label for="f-date">Date</label>
+          <input class="rmis-input" id="f-date" type="date">
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button class="btn-ghost" id="f-clear">Clear</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn-primary" id="btn-new">+ New Bill</button>
+      </div>
 
       <div class="card">
-        <div class="card-head">Recent orders <span class="demo-note">&mdash; sample rows</span></div>
+        <div class="card-head">Bills</div>
         <table class="mock">
-          <thead><tr><th>Order #</th><th>Table</th><th>Items</th><th>Total</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>#1042</td><td>T-06</td><td>5</td><td>₱620</td><td><span class="tag tag-ok">Paid</span></td></tr>
-            <tr><td>#1043</td><td>T-02</td><td>3</td><td>₱410</td><td><span class="tag tag-warn">Open</span></td></tr>
-            <tr><td>#1044</td><td>Takeout</td><td>2</td><td>₱180</td><td><span class="tag tag-warn">Open</span></td></tr>
-            <tr><td>#1045</td><td>T-09</td><td>7</td><td>₱1,240</td><td><span class="tag tag-ok">Paid</span></td></tr>
-          </tbody>
+          <thead>
+            <tr><th>Bill #</th><th>Table / Ref</th><th>Time</th><th>Cashier</th><th class="num">Total</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="sales-body"></tbody>
         </table>
+        <div class="empty-state" id="sales-empty" hidden>No bills match. Start one with &ldquo;New Bill&rdquo;.</div>
       </div>
     </main>
   </div>
 
+  <div class="modal-overlay" id="modal" hidden><div class="modal modal-wide" id="modal-card"></div></div>
+
   <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/sales.js"></script>
 </body>
 </html>

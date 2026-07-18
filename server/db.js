@@ -122,7 +122,53 @@ db.exec(`
     reviewed_at TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
   );
+
+  -- ===== Sprint 2: Sales & Billing (POS) =====
+  -- A bill/receipt. Totals are computed and stored server-side; the client
+  -- never sets them. status: Open (running bill) | Paid (settled) | Void.
+  CREATE TABLE IF NOT EXISTS sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    bill_number TEXT NOT NULL DEFAULT '',
+    table_label TEXT NOT NULL DEFAULT '', -- optional table / customer reference
+    sale_date TEXT NOT NULL DEFAULT '',   -- local 'YYYY-MM-DD' (for day grouping/filter)
+    status TEXT NOT NULL DEFAULT 'Open',
+    subtotal REAL NOT NULL DEFAULT 0,
+    discount REAL NOT NULL DEFAULT 0,
+    tax REAL NOT NULL DEFAULT 0,
+    total REAL NOT NULL DEFAULT 0,
+    payment_method TEXT NOT NULL DEFAULT '', -- Cash | Card | GCash (on settle)
+    amount_tendered REAL NOT NULL DEFAULT 0,
+    change_due REAL NOT NULL DEFAULT 0,
+    cashier_id INTEGER NOT NULL,
+    cashier_name TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    settled_at TEXT NOT NULL DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS sale_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    quantity REAL NOT NULL,
+    unit_price REAL NOT NULL,
+    line_total REAL NOT NULL
+  );
 `);
+
+// Add a column to an existing table if a prior schema version lacked it.
+// (CREATE TABLE IF NOT EXISTS won't alter an existing table.) Keeps dev DBs
+// forward-compatible without a destructive rebuild.
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+ensureColumn('sales', 'sale_date', "sale_date TEXT NOT NULL DEFAULT ''");
+
+// Local calendar date 'YYYY-MM-DD' (not UTC — matters for day grouping).
+function localDate() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 // node:sqlite's DatabaseSync has no better-sqlite3-style db.transaction();
 // wrap work in an explicit BEGIN/COMMIT (ROLLBACK on throw) instead. Synchronous.
@@ -446,9 +492,62 @@ function listApprovedLeave({ userId, date } = {}) {
   return db.prepare('SELECT * FROM leave_requests WHERE ' + where.join(' AND ') + ' ORDER BY start_date').all(...params);
 }
 
+// ===== Sprint 2: Sales & Billing =====
+
+function createSale({ tableLabel, subtotal, discount, tax, total, cashierId, cashierName, items }) {
+  const now = new Date().toISOString();
+  return tx(() => {
+    const info = db.prepare(
+      'INSERT INTO sales (bill_number, table_label, sale_date, status, subtotal, discount, tax, total, cashier_id, cashier_name, created_at) ' +
+      "VALUES ('', ?, ?, 'Open', ?, ?, ?, ?, ?, ?, ?)"
+    ).run(tableLabel || '', localDate(), subtotal, discount, tax, total, cashierId, cashierName || '', now);
+    const saleId = Number(info.lastInsertRowid);
+    // Official-receipt-style number derived from the row id, e.g. OR-001.
+    const billNumber = 'OR-' + String(saleId).padStart(3, '0');
+    db.prepare('UPDATE sales SET bill_number = ? WHERE id = ?').run(billNumber, saleId);
+    for (const it of items) {
+      db.prepare('INSERT INTO sale_items (sale_id, name, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?)')
+        .run(saleId, it.name, it.quantity, it.unitPrice, it.lineTotal);
+    }
+    return saleId;
+  });
+}
+
+function listSales({ status, date, cashierId } = {}) {
+  const where = [];
+  const params = [];
+  if (status) { where.push('status = ?'); params.push(status); }
+  if (date) { where.push('sale_date = ?'); params.push(date); }
+  if (cashierId) { where.push('cashier_id = ?'); params.push(cashierId); }
+  const sql = 'SELECT * FROM sales ' +
+    (where.length ? 'WHERE ' + where.join(' AND ') + ' ' : '') +
+    'ORDER BY id DESC';
+  return db.prepare(sql).all(...params);
+}
+
+function findSaleById(id) {
+  return db.prepare('SELECT * FROM sales WHERE id = ?').get(id);
+}
+
+function listSaleItems(saleId) {
+  return db.prepare('SELECT * FROM sale_items WHERE sale_id = ? ORDER BY id').all(saleId);
+}
+
+function settleSale(id, { paymentMethod, amountTendered, changeDue }) {
+  return db.prepare(
+    "UPDATE sales SET status = 'Paid', payment_method = ?, amount_tendered = ?, change_due = ?, settled_at = ? WHERE id = ?"
+  ).run(paymentMethod, amountTendered, changeDue, new Date().toISOString(), id);
+}
+
+function voidSale(id) {
+  return db.prepare("UPDATE sales SET status = 'Void' WHERE id = ?").run(id);
+}
+
 module.exports = {
   db,
   findUserByEmail, findUserById, createUser, updateProfile, updatePassword, createReset, getReset, markResetUsed,
+  // sales & billing
+  createSale, listSales, findSaleById, listSaleItems, settleSale, voidSale,
   // suppliers
   listSuppliers, findSupplierById, findSupplierByName, createSupplier, ensureSupplier,
   // ingredients

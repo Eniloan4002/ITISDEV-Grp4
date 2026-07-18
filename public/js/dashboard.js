@@ -9,19 +9,21 @@
   document.getElementById('greeting').textContent =
     `Welcome, ${me.fullName}`;
 
-  // KPI tiles are illustrative placeholders (no live data yet).
-  const KPIS = [
-    { label: "Today's Sales", value: '₱12,480', sub: 'demo data' },
-    { label: 'Open Orders',   value: '8',        sub: 'demo data' },
-    { label: 'Low-stock Items', value: '3',      sub: 'demo data' },
-    { label: 'Staff On Shift', value: '11',      sub: 'demo data' },
-  ];
-  document.getElementById('kpi-row').innerHTML = KPIS.map((k) => `
-    <div class="kpi">
-      <div class="kpi-label">${k.label}</div>
-      <div class="kpi-value">${k.value}</div>
-      <div class="kpi-sub">${k.sub}</div>
-    </div>`).join('');
+  // Live KPI tiles, computed server-side and filtered to this role.
+  const kpiRow = document.getElementById('kpi-row');
+  try {
+    const res = await fetch('/api/dashboard/summary');
+    const data = await res.json();
+    const kpis = (data && data.kpis) || [];
+    kpiRow.innerHTML = kpis.map((k) => `
+      <div class="kpi">
+        <div class="kpi-label">${k.label}</div>
+        <div class="kpi-value">${k.value}</div>
+        <div class="kpi-sub">${k.sub}</div>
+      </div>`).join('');
+  } catch {
+    kpiRow.innerHTML = '<div class="kpi"><div class="kpi-label">Metrics</div><div class="kpi-value">&mdash;</div><div class="kpi-sub">unavailable</div></div>';
+  }
 
   function tile(m) {
     const badge = m.sprint

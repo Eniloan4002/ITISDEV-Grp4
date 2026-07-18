@@ -19,6 +19,7 @@ const dbApi = require('./db');
 const rmis = require('./rmis');
 const attendance = require('./attendance');
 const sales = require('./sales');
+const dashboard = require('./dashboard');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = 3000;
@@ -460,6 +461,7 @@ const server = http.createServer((req, res) => {
       if (await rmis.route(req, res, getSession)) return;
       if (await attendance.route(req, res, getSession)) return;
       if (await sales.route(req, res, getSession)) return;
+      if (await dashboard.route(req, res, getSession)) return;
       res.writeHead(404); res.end('Not found');
     })().catch((err) => {
       console.error('[api] route error:', err);

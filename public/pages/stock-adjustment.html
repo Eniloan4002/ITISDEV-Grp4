@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Adjustment &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Inventory</div>
+      <a class="side-link" href="/inventory">Ingredient Inventory</a>
+      <a class="side-link" href="/stock-alerts">Stock Alerts</a>
+      <a class="side-link is-active" href="/stock-adjustment">Stock Adjustment</a>
+      <a class="side-link" href="/purchase-orders">Purchase Orders</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Stock Adjustment</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+      <p class="muted" style="margin-bottom:18px">
+        Record damaged, spoiled, returned, or manually corrected stock. Adjustments
+        move the on-hand quantity and are logged for traceability.
+      </p>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <div class="card">
+        <div class="card-head">New adjustment</div>
+        <div class="modal-body">
+          <form id="adj-form" novalidate>
+            <div class="form-grid">
+              <div class="field-inline full"><label>Ingredient *</label>
+                <select class="rmis-select" name="ingredientId" id="adj-ingredient" required>
+                  <option value="">&mdash; select ingredient &mdash;</option>
+                </select>
+                <span class="muted" id="adj-onhand"></span>
+              </div>
+              <div class="field-inline"><label>Adjustment type *</label>
+                <select class="rmis-select" name="adjustmentType" id="adj-type" required>
+                  <option value="">&mdash; select &mdash;</option>
+                  <option value="damage">Damage</option>
+                  <option value="spoilage">Spoilage</option>
+                  <option value="return">Return</option>
+                  <option value="manual">Manual correction</option>
+                </select>
+              </div>
+              <div class="field-inline"><label>Effect *</label>
+                <select class="rmis-select" name="direction" id="adj-direction" required>
+                  <option value="decrease">Decrease stock (&minus;)</option>
+                  <option value="increase">Increase stock (+)</option>
+                </select>
+              </div>
+              <div class="field-inline"><label>Quantity *</label>
+                <input class="rmis-input" name="quantity" type="number" min="0" step="any" required></div>
+              <div class="field-inline"><label>Date</label>
+                <input class="rmis-input" type="text" id="adj-date" disabled></div>
+              <div class="field-inline full"><label>Reason *</label>
+                <input class="rmis-input" name="reason" placeholder="e.g. spoiled during storage" required></div>
+            </div>
+            <div class="field-err" id="adj-err"></div>
+            <div style="margin-top:14px">
+              <button type="submit" class="btn-primary" id="adj-submit">Save adjustment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head" id="history-head">Adjustment history</div>
+        <table class="mock">
+          <thead><tr><th>Date</th><th>Type</th><th class="num">Qty</th><th>Reason</th><th>User</th></tr></thead>
+          <tbody id="adj-history"></tbody>
+        </table>
+        <div class="empty-state" id="history-empty" hidden>Select an ingredient to see its adjustment history.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/stock-adjustment.js"></script>
+</body>
+</html>

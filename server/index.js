@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const dbApi = require('./db');
+const rmis = require('./rmis');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = 3000;
@@ -24,9 +25,9 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 // SI-10 — which role may access which protected pages. '*' = all pages.
 const ROLE_PAGES = {
   Admin:   ['*'],
-  Manager: ['/dashboard', '/profile', '/modules'],
+  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/stock-alerts', '/stock-adjustment', '/purchase-orders'],
   Cashier: ['/dashboard', '/profile'],
-  Staff:   ['/dashboard', '/profile'],
+  Staff:   ['/dashboard', '/profile', '/inventory', '/stock-alerts'],
 };
 // Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
 // No session -> 302 /login; wrong role -> 403. Module role lists MUST mirror
@@ -36,8 +37,12 @@ const PROTECTED_PAGES = {
   '/dashboard': ALL_ROLES,         // apps home — any signed-in role
   '/register': ['Admin'],          // "Create User" — admin only
   '/admin-settings': ['Admin'],    // admin-only stub
-  // Sprint 2 RMIS module pages (placeholder screens, real gating).
-  '/inventory':    ['Admin', 'Manager', 'Staff'],
+  // Sprint 2 RMIS module pages. Inventory + Stock Alerts are live (see rmis.js);
+  // the rest remain placeholder screens with real gating.
+  '/inventory':        ['Admin', 'Manager', 'Staff'],
+  '/stock-alerts':     ['Admin', 'Manager', 'Staff'],
+  '/stock-adjustment': ['Admin', 'Manager'],
+  '/purchase-orders':  ['Admin', 'Manager'],
   '/sales':        ['Admin', 'Manager', 'Cashier'],
   '/attendance':   ['Admin', 'Manager'],
   '/supplier':     ['Admin', 'Manager'],
@@ -441,6 +446,16 @@ const server = http.createServer((req, res) => {
   }
   if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
     return handleResetConfirm(req, res);
+  }
+  // Sprint 2 — delegate all remaining /api/* routes to the RMIS inventory API.
+  if (req.url.startsWith('/api/')) {
+    rmis.route(req, res, getSession)
+      .then((handled) => { if (!handled) { res.writeHead(404); res.end('Not found'); } })
+      .catch((err) => {
+        console.error('[rmis] route error:', err);
+        if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ message: 'Server error.' })); }
+      });
+    return;
   }
   if (req.method === 'GET') {
     // SI-10 — server-side RBAC gate for protected pages (blocks direct-URL access).

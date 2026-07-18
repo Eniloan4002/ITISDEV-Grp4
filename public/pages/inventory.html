@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventory &amp; Stock &mdash; AM Restaurant RMIS</title>
+  <title>Ingredient Inventory &mdash; AM Restaurant RMIS</title>
   <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body class="app">
@@ -20,47 +20,64 @@
   <div class="app-body">
     <aside class="sidebar">
       <a class="side-back" href="/dashboard">&larr; All apps</a>
-      <div class="side-section">Inventory &amp; Stock</div>
-      <a class="side-link is-active" href="/inventory">Overview</a>
-      <span class="side-link is-disabled">Stock items</span>
-      <span class="side-link is-disabled">Stock movements</span>
-      <span class="side-link is-disabled">Categories</span>
-      <span class="side-link is-disabled">Adjustments</span>
+      <div class="side-section">Inventory</div>
+      <a class="side-link is-active" href="/inventory">Ingredient Inventory</a>
+      <a class="side-link" href="/stock-alerts">Stock Alerts</a>
+      <a class="side-link" id="nav-adjust" href="/stock-adjustment">Stock Adjustment</a>
+      <a class="side-link" id="nav-po" href="/purchase-orders">Purchase Orders</a>
     </aside>
 
     <main class="content">
       <div class="page-head">
-        <h1>Inventory &amp; Stock</h1>
-        <span class="pill pill-sprint">Placeholder &middot; Sprint 2</span>
-      </div>
-      <div class="banner">
-        <strong>Placeholder module.</strong> The layout and navigation are in place;
-        live stock tracking (items, movements, reorder alerts) is scheduled for the
-        <strong>Sprint 2 &mdash; Core Operations</strong> build. Figures below are demo data.
+        <h1>Ingredient Inventory</h1>
+        <span class="pill pill-live">Live</span>
       </div>
 
-      <section class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Total SKUs</div><div class="kpi-value">142</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Low Stock</div><div class="kpi-value">3</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Out of Stock</div><div class="kpi-value">1</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Stock Value</div><div class="kpi-value">₱84,200</div><div class="kpi-sub">demo data</div></div>
-      </section>
+      <!-- Low-stock notification banner (AC: managers see a banner for low items). -->
+      <div class="notice notice-warn" id="lowstock-notice" hidden></div>
+      <div class="notice" id="page-notice" hidden></div>
+
+      <section class="kpi-row" id="kpi-row"></section>
+
+      <div class="toolbar">
+        <div class="field-inline grow">
+          <label for="f-search">Search</label>
+          <input class="rmis-input" id="f-search" type="search" placeholder="Ingredient name&hellip;">
+        </div>
+        <div class="field-inline">
+          <label for="f-category">Category</label>
+          <select class="rmis-select" id="f-category"><option value="">All categories</option></select>
+        </div>
+        <div class="field-inline">
+          <label for="f-supplier">Supplier</label>
+          <select class="rmis-select" id="f-supplier"><option value="">All suppliers</option></select>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn-primary" id="btn-new">+ New Ingredient</button>
+      </div>
 
       <div class="card">
-        <div class="card-head">Stock items <span class="demo-note">&mdash; sample rows</span></div>
+        <div class="card-head">Ingredients</div>
         <table class="mock">
-          <thead><tr><th>Item</th><th>Category</th><th>On hand</th><th>Reorder pt</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>Rice (25kg sack)</td><td>Dry goods</td><td>12</td><td>5</td><td><span class="tag tag-ok">OK</span></td></tr>
-            <tr><td>Pork belly</td><td>Meat</td><td>4</td><td>8</td><td><span class="tag tag-warn">Low</span></td></tr>
-            <tr><td>Coffee beans</td><td>Beverage</td><td>2</td><td>6</td><td><span class="tag tag-warn">Low</span></td></tr>
-            <tr><td>Cooking oil</td><td>Dry goods</td><td>0</td><td>4</td><td><span class="tag tag-warn">Out</span></td></tr>
-          </tbody>
+          <thead>
+            <tr>
+              <th>Name</th><th>Category</th><th>Supplier</th><th>Unit</th>
+              <th class="num">On hand</th><th class="num">Reorder</th>
+              <th>Expiration</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inv-body"></tbody>
         </table>
+        <div class="empty-state" id="inv-empty" hidden>No ingredients match. Add one with &ldquo;New Ingredient&rdquo;.</div>
       </div>
     </main>
   </div>
 
+  <!-- Generic modal shell, filled by inventory.js. -->
+  <div class="modal-overlay" id="modal" hidden><div class="modal" id="modal-card"></div></div>
+
   <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/inventory.js"></script>
 </body>
 </html>

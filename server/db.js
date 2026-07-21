@@ -205,6 +205,21 @@ function updatePassword(id, passwordHash) {
   return db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
 }
 
+// ===== Admin user management (SI-10) =====
+
+function updateUserRole(id, role) {
+  return db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
+}
+
+function deleteUser(id) {
+  return db.prepare('DELETE FROM users WHERE id = ?').run(id);
+}
+
+// How many Admin accounts exist — used to block removing the last one.
+function countAdmins() {
+  return db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'Admin'").get().n;
+}
+
 function createReset(token, userId, expiresAt) {
   return db.prepare('INSERT INTO password_resets (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expiresAt);
 }
@@ -546,6 +561,8 @@ function voidSale(id) {
 module.exports = {
   db,
   findUserByEmail, findUserById, createUser, updateProfile, updatePassword, createReset, getReset, markResetUsed,
+  // admin user management
+  updateUserRole, deleteUser, countAdmins,
   // sales & billing
   createSale, listSales, findSaleById, listSaleItems, settleSale, voidSale,
   // suppliers

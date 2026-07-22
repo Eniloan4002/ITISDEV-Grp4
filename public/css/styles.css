@@ -319,6 +319,158 @@ section {
   color: #b02727;
 }
 
+.reservation-card {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 24px;
+}
+
+.reservation-card h2 {
+  margin-bottom: 16px;
+}
+
+.reservation-card .field {
+  margin-bottom: 12px;
+}
+
+.status-select {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+/* Floor Plan */
+.floor-plan-card {
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 20px;
+  background: #fff;
+  margin-bottom: 24px;
+}
+
+.status-legend {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.legend-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-item .table-status {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.floor-plan {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  min-height: 300px;
+}
+
+.table-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 8px;
+  border: 2px solid #ddd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 100px;
+  background: #fff;
+  position: relative;
+}
+
+.table-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  border-width: 3px;
+}
+
+.table-item::after {
+  content: '⋮';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 14px;
+  color: #999;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.table-item:hover::after {
+  opacity: 1;
+}
+
+.table-item.available {
+  background: #f0fff4;
+  border-color: #31a44a;
+}
+
+.table-item.occupied {
+  background: #fff5f5;
+  border-color: #ff6b6b;
+}
+
+.table-item.reserved {
+  background: #fffbf0;
+  border-color: #f59f00;
+}
+
+.table-item.pending-cleaning {
+  background: #f5f5f5;
+  border-color: #868e96;
+}
+
+.table-number {
+  font-weight: 600;
+  font-size: 16px;
+  color: #333;
+}
+
+.table-capacity {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.table-reservation {
+  font-size: 11px;
+  color: #666;
+  margin-top: 6px;
+  font-style: italic;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .inventory-grid {
     grid-template-columns: 1fr;
@@ -326,5 +478,14 @@ section {
 
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  .floor-plan {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+
+  .status-legend {
+    flex-direction: column;
+    gap: 12px;
   }
 }

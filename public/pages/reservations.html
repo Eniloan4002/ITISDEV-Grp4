@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Table Reservations - AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="container container-wide">
+    <header class="page-header">
+      <h1>Table Reservations</h1>
+      <p class="subtitle">Book a table for your guests.</p>
+    </header>
+
+    <p id="form-message" class="form-message" role="alert" hidden></p>
+
+    <section class="reservation-card">
+      <h2>New Reservation</h2>
+      <form id="reservation-form" novalidate>
+        <div class="field">
+          <label for="customer-name">Guest Name</label>
+          <input type="text" id="customer-name" required autofocus>
+          <span class="field-error" id="error-customerName"></span>
+        </div>
+
+        <div class="field">
+          <label for="contact-number">Contact Number</label>
+          <input type="tel" id="contact-number" required>
+          <span class="field-error" id="error-contactNumber"></span>
+        </div>
+
+        <div class="field">
+          <label for="party-size">Party Size</label>
+          <input type="number" min="1" max="20" id="party-size" required>
+          <span class="field-error" id="error-partySize"></span>
+        </div>
+
+        <div class="field">
+          <label for="reservation-start">Reservation Start</label>
+          <input type="datetime-local" id="reservation-start" required>
+          <span class="field-error" id="error-reservationStart"></span>
+        </div>
+
+        <div class="field">
+          <label for="reservation-end">Reservation End</label>
+          <input type="datetime-local" id="reservation-end" required>
+          <span class="field-error" id="error-reservationEnd"></span>
+        </div>
+
+        <div class="actions">
+          <button type="submit">Create Reservation</button>
+          <a href="/dashboard" class="cancel-link">Back to Dashboard</a>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Active Reservations</h2>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Guest Name</th>
+              <th>Contact</th>
+              <th>Party Size</th>
+              <th>Table</th>
+              <th>Start Time</th>
+              <th>End Time</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reservations-body">
+            <tr>
+              <td colspan="8" class="muted">Loading reservations...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="actions">
+      <a href="/dashboard" class="cancel-link">&larr; Back to Dashboard</a>
+    </div>
+  </main>
+
+  <script src="/js/reservations.js"></script>
+</body>
+</html>

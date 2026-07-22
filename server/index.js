@@ -17,9 +17,9 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 // SI-10 role-based visible modules. '*' = all pages.
 const ROLE_PAGES = {
   Admin: ['*'],
-  Manager: ['/dashboard', '/profile', '/modules', '/inventory'],
+  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/reservations', '/table-availability'],
   Cashier: ['/dashboard', '/profile'],
-  Staff: ['/dashboard', '/profile', '/inventory'],
+  Staff: ['/dashboard', '/profile', '/inventory', '/reservations', '/table-availability'],
 };
 
 // Pages that require auth + specific roles.
@@ -27,6 +27,8 @@ const PROTECTED_PAGES = {
   '/register': ['Admin'],
   '/admin-settings': ['Admin'],
   '/inventory': ['Admin', 'Manager', 'Staff'],
+  '/reservations': ['Admin', 'Manager', 'Staff'],
+  '/table-availability': ['Admin', 'Manager', 'Staff'],
 };
 
 // In-memory session store (MVP): restart forces re-login.
@@ -467,6 +469,141 @@ async function handleInventoryTransaction(req, res) {
   }
 }
 
+async function handleGetTables(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  try {
+    const tables = await dbApi.listTables();
+    return sendJson(res, 200, { tables });
+  } catch (err) {
+    console.error('[tables] failed:', err);
+    return sendJson(res, 500, { message: 'Could not load tables.' });
+  }
+}
+
+async function handleCreateReservation(req, res) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  const errors = {};
+  if (!data.customerName || !data.customerName.trim()) errors.customerName = 'Guest name is required.';
+  if (!data.contactNumber || !data.contactNumber.trim()) errors.contactNumber = 'Contact number is required.';
+  if (!data.partySize || Number(data.partySize) <= 0) errors.partySize = 'Party size must be greater than 0.';
+  if (!data.reservationStart) errors.reservationStart = 'Reservation start date/time is required.';
+  if (!data.reservationEnd) errors.reservationEnd = 'Reservation end date/time is required.';
+
+  if (Object.keys(errors).length > 0) {
+    return sendJson(res, 400, { message: 'Please correct the highlighted fields.', errors });
+  }
+
+  try {
+    const tableId = await dbApi.findAvailableTable(
+      Number(data.partySize),
+      new Date(data.reservationStart),
+      new Date(data.reservationEnd)
+    );
+
+    if (!tableId) {
+      return sendJson(res, 409, { message: 'No available tables for the requested time and party size.' });
+    }
+
+    const reservationId = await dbApi.createReservation({
+      customerName: data.customerName.trim(),
+      contactNumber: data.contactNumber.trim(),
+      tableId,
+      partySize: Number(data.partySize),
+      reservationStart: new Date(data.reservationStart),
+      reservationEnd: new Date(data.reservationEnd),
+      createdBy: s.userId,
+    });
+
+    return sendJson(res, 201, {
+      message: 'Reservation confirmed.',
+      reservationId,
+      tableId,
+    });
+  } catch (err) {
+    console.error('[reservations:create] failed:', err);
+    return sendJson(res, 500, { message: 'Could not create reservation.' });
+  }
+}
+
+async function handleUpdateReservationStatus(req, res, reservationId) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  const validStatuses = ['Pending', 'Confirmed', 'Seated', 'Completed', 'Cancelled', 'No Show'];
+  if (!data.status || !validStatuses.includes(data.status)) {
+    return sendJson(res, 400, { message: 'Invalid reservation status.' });
+  }
+
+  try {
+    const updated = await dbApi.updateReservationStatus(Number(reservationId), data.status);
+    if (!updated) {
+      return sendJson(res, 404, { message: 'Reservation not found.' });
+    }
+    return sendJson(res, 200, { message: 'Reservation status updated.' });
+  } catch (err) {
+    console.error('[reservations:update] failed:', err);
+    return sendJson(res, 500, { message: 'Could not update reservation.' });
+  }
+}
+
+async function handleUpdateTableStatus(req, res, tableId) {
+  const s = getSession(req);
+  if (!s) return sendJson(res, 401, { message: 'Not authenticated.' });
+  if (!['Admin', 'Manager', 'Staff'].includes(s.role)) {
+    return sendJson(res, 403, { message: 'Unauthorized.' });
+  }
+
+  let data;
+  try {
+    data = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { message: 'Invalid request.' });
+  }
+
+  const validStatuses = ['Available', 'Occupied', 'Reserved', 'Maintenance'];
+  if (!data.status || !validStatuses.includes(data.status)) {
+    return sendJson(res, 400, { message: 'Invalid table status.' });
+  }
+
+  try {
+    const updated = await dbApi.updateTableStatus(Number(tableId), data.status);
+    if (!updated) {
+      return sendJson(res, 404, { message: 'Table not found.' });
+    }
+    return sendJson(res, 200, { message: 'Table status updated.' });
+  } catch (err) {
+    console.error('[tables:update] failed:', err);
+    return sendJson(res, 500, { message: 'Could not update table status.' });
+  }
+}
+
 const CONTENT_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -582,6 +719,21 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && req.url === '/api/inventory/transactions') {
       return handleInventoryTransaction(req, res);
+    }
+
+    if (req.method === 'GET' && req.url === '/api/tables') {
+      return handleGetTables(req, res);
+    }
+    if (req.method === 'POST' && req.url === '/api/reservations') {
+      return handleCreateReservation(req, res);
+    }
+    if (req.method === 'PUT' && req.url.startsWith('/api/reservations/')) {
+      const id = req.url.split('/')[3];
+      return handleUpdateReservationStatus(req, res, id);
+    }
+    if (req.method === 'PUT' && req.url.startsWith('/api/tables/')) {
+      const id = req.url.split('/')[3];
+      return handleUpdateTableStatus(req, res, id);
     }
 
     if (req.method === 'GET') {

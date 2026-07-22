@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Table Availability - AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="container container-wide">
+    <header class="page-header">
+      <h1>Table Availability</h1>
+      <p class="subtitle">Real-time floor plan and table status.</p>
+    </header>
+
+    <p id="form-message" class="form-message" role="alert" hidden></p>
+
+    <section class="floor-plan-card">
+      <h2>Dining Floor</h2>
+      <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Click on any table to update its status. Use filters below to show/hide tables.</p>
+      <div class="status-legend">
+        <label class="legend-checkbox">
+          <input type="checkbox" value="Available" checked onchange="applyFilters()">
+          <div class="table-status available"></div>
+          <span>Available</span>
+        </label>
+        <label class="legend-checkbox">
+          <input type="checkbox" value="Occupied" checked onchange="applyFilters()">
+          <div class="table-status occupied"></div>
+          <span>Occupied</span>
+        </label>
+        <label class="legend-checkbox">
+          <input type="checkbox" value="Reserved" checked onchange="applyFilters()">
+          <div class="table-status reserved"></div>
+          <span>Reserved</span>
+        </label>
+        <label class="legend-checkbox">
+          <input type="checkbox" value="Maintenance" checked onchange="applyFilters()">
+          <div class="table-status pending-cleaning"></div>
+          <span>Pending Cleaning</span>
+        </label>
+      </div>
+      <div class="floor-plan" id="floor-plan">
+        <p class="muted">Loading floor plan...</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Table Details</h2>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Table #</th>
+              <th>Capacity</th>
+              <th>Location</th>
+              <th>Current Status</th>
+              <th>Current Reservation</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tables-body">
+            <tr>
+              <td colspan="6" class="muted">Loading table details...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="actions">
+      <a href="/dashboard" class="cancel-link">&larr; Back to Dashboard</a>
+    </div>
+  </main>
+
+  <script src="/js/table-availability.js"></script>
+</body>
+</html>

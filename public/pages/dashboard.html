@@ -30,9 +30,11 @@
     const MODULES = [
       { href: '/login',          label: 'Login (SI-7)',                               roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
       { href: '/profile',        label: 'My Profile (SI-9)',                          roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-      { href: '/register',       label: 'Create User Account &mdash; Registration (SI-6)', roles: ['Admin'] },
+      { href: '/register',       label: 'Create User Account — Registration (SI-6)', roles: ['Admin'] },
       { href: '/admin-settings', label: 'Admin Settings (SI-10)',                     roles: ['Admin'] },
-      { href: '/inventory',      label: 'Ingredient Inventory',                        roles: ['Admin', 'Manager', 'Staff'] },
+      { href: '/inventory',      label: 'Ingredient Inventory (SI-19)',                roles: ['Admin', 'Manager', 'Staff'] },
+      { href: '/reservations',   label: 'Book Table Reservation (SI-22)',             roles: ['Admin', 'Manager', 'Staff'] },
+      { href: '/table-availability', label: 'Table Availability Status (SI-23)',      roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
     ];
 
     function renderModules(role) {

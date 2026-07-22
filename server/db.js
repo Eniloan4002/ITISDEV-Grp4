@@ -381,6 +381,81 @@ async function recordInventoryTransaction({
   }
 }
 
+async function listTables() {
+  const [rows] = await pool.query(
+    `SELECT
+       t.table_id,
+       t.table_number,
+       t.seating_capacity,
+       t.table_location,
+       t.table_status,
+       r.reservation_id,
+       r.customer_name,
+       r.party_size,
+       r.reservation_start,
+       r.reservation_status
+     FROM restaurant_tables t
+     LEFT JOIN reservations r ON r.table_id = t.table_id
+       AND r.reservation_status IN ('Pending', 'Confirmed', 'Seated')
+     WHERE t.is_active = TRUE
+     ORDER BY t.table_number ASC`
+  );
+  return rows;
+}
+
+async function createReservation({ customerName, contactNumber, tableId, partySize, reservationStart, reservationEnd, createdBy }) {
+  const [result] = await pool.query(
+    `INSERT INTO reservations
+     (customer_name, contact_number, table_id, party_size, reservation_start, reservation_end, reservation_status, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, CURRENT_TIMESTAMP)`,
+    [customerName, contactNumber, tableId, partySize, reservationStart, reservationEnd, createdBy]
+  );
+  return Number(result.insertId);
+}
+
+async function updateReservationStatus(reservationId, newStatus) {
+  const [result] = await pool.query(
+    `UPDATE reservations
+     SET reservation_status = ?
+     WHERE reservation_id = ?`,
+    [newStatus, reservationId]
+  );
+  return result.affectedRows > 0;
+}
+
+async function updateTableStatus(tableId, newStatus) {
+  const [result] = await pool.query(
+    `UPDATE restaurant_tables
+     SET table_status = ?
+     WHERE table_id = ?`,
+    [newStatus, tableId]
+  );
+  return result.affectedRows > 0;
+}
+
+async function findAvailableTable(partySize, reservationStart, reservationEnd) {
+  const [rows] = await pool.query(
+    `SELECT t.table_id
+     FROM restaurant_tables t
+     WHERE t.is_active = TRUE
+       AND t.seating_capacity >= ?
+       AND t.table_id NOT IN (
+         SELECT DISTINCT r.table_id
+         FROM reservations r
+         WHERE r.reservation_status IN ('Pending', 'Confirmed', 'Seated')
+           AND (
+             (r.reservation_start <= ? AND r.reservation_end > ?)
+             OR (r.reservation_start < ? AND r.reservation_end >= ?)
+             OR (r.reservation_start >= ? AND r.reservation_end <= ?)
+           )
+       )
+     ORDER BY t.seating_capacity ASC
+     LIMIT 1`,
+    [partySize, reservationEnd, reservationStart, reservationEnd, reservationStart, reservationStart, reservationEnd]
+  );
+  return rows.length > 0 ? rows[0].table_id : null;
+}
+
 module.exports = {
   init,
   pool,
@@ -396,4 +471,9 @@ module.exports = {
   listInventoryMeta,
   createIngredient,
   recordInventoryTransaction,
+  listTables,
+  createReservation,
+  updateReservationStatus,
+  updateTableStatus,
+  findAvailableTable,
 };

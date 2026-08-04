@@ -23,6 +23,21 @@ const pool = mysql.createPool({
   decimalNumbers: true,
 });
 
+// Pin the SESSION time zone for every pooled connection.
+//
+// NOW(), CURDATE() and DATE(...) all resolve against the MySQL server's zone.
+// On a laptop that is Manila time and everything looks right; on a VM running
+// UTC (the common default) a 07:00 Manila sale is stored as 23:00 the previous
+// day, so sale_date, work_date, "Today's Sales" and every daily KPI silently
+// land on the wrong date. Setting it per-connection makes behaviour identical
+// wherever the database is hosted.
+const DB_TIMEZONE = process.env.DB_TIMEZONE || '+08:00';
+pool.on('connection', (conn) => {
+  conn.query('SET time_zone = ?', [DB_TIMEZONE], (err) => {
+    if (err) console.error('[db] could not set session time_zone:', err.message);
+  });
+});
+
 let initPromise;
 
 function splitName(fullName) {
@@ -69,11 +84,21 @@ async function init() {
       );
 
       // Older MySQL versions do not support "ADD COLUMN IF NOT EXISTS".
-      if (!(await columnExists('ingredient_inventory', 'expires_on'))) {
-        await pool.query('ALTER TABLE ingredient_inventory ADD COLUMN expires_on DATE NULL');
-      }
-      if (!(await columnExists('stock_movements', 'reference_no'))) {
-        await pool.query('ALTER TABLE stock_movements ADD COLUMN reference_no VARCHAR(100) NULL');
+      //
+      // Both columns are present in "SQL/AMDB creation script.sql", so on a
+      // correctly-built AMDB neither branch runs. They only fire against an
+      // older schema. A production/VM account is often granted DML only, and
+      // ALTER would then throw and take the whole app down on boot — so a
+      // failure here is logged and tolerated rather than fatal.
+      try {
+        if (!(await columnExists('ingredient_inventory', 'expires_on'))) {
+          await pool.query('ALTER TABLE ingredient_inventory ADD COLUMN expires_on DATE NULL');
+        }
+        if (!(await columnExists('stock_movements', 'reference_no'))) {
+          await pool.query('ALTER TABLE stock_movements ADD COLUMN reference_no VARCHAR(100) NULL');
+        }
+      } catch (err) {
+        console.error('[db] schema top-up skipped (insufficient privileges?):', err.message);
       }
     })();
   }

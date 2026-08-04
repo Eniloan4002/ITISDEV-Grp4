@@ -1,10 +1,17 @@
 USE AMDB;
 
+-- NOTE: each view is declared SQL SECURITY INVOKER so it runs with the
+-- privileges of the account querying it, not the account that created it.
+-- Without this MySQL bakes in DEFINER=<creator>@<host>; restoring the schema
+-- on a VM whose accounts differ then fails with
+--   "The user specified as a definer does not exist".
+
+
 -- -------------------------
 -- Dashboard / Report Views
 -- -------------------------
 
-CREATE OR REPLACE VIEW v_inventory_status AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_inventory_status AS
 SELECT
     i.ingredient_id,
     i.ingredient_name,
@@ -22,7 +29,7 @@ FROM ingredients i
 LEFT JOIN ingredient_type it ON i.ingredient_type_id = it.ingredient_type_id
 LEFT JOIN ingredient_inventory inv ON i.ingredient_id = inv.ingredient_id;
 
-CREATE OR REPLACE VIEW v_open_stock_alerts AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_open_stock_alerts AS
 SELECT
     sa.stock_alert_id,
     i.ingredient_name,
@@ -34,7 +41,7 @@ FROM stock_alerts sa
 JOIN ingredients i ON sa.ingredient_id = i.ingredient_id
 WHERE sa.alert_status = 'Open';
 
-CREATE OR REPLACE VIEW v_sales_history AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_sales_history AS
 SELECT
     pt.transaction_id,
     pt.transaction_no,
@@ -50,7 +57,7 @@ FROM pos_transactions pt
 JOIN accounts a ON pt.cashier_id = a.account_id
 LEFT JOIN customers c ON pt.customer_id = c.customer_id;
 
-CREATE OR REPLACE VIEW v_daily_sales AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_daily_sales AS
 SELECT
     DATE(transaction_datetime) AS sales_date,
     COUNT(*) AS transaction_count,
@@ -59,7 +66,7 @@ FROM pos_transactions
 WHERE transaction_status IN ('Completed', 'Partially Refunded')
 GROUP BY DATE(transaction_datetime);
 
-CREATE OR REPLACE VIEW v_table_availability AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_table_availability AS
 SELECT
     table_id,
     table_number,
@@ -69,7 +76,7 @@ SELECT
 FROM restaurant_tables
 WHERE is_active = TRUE;
 
-CREATE OR REPLACE VIEW v_attendance_today AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_attendance_today AS
 SELECT
     al.attendance_id,
     al.account_id,
@@ -81,7 +88,7 @@ FROM attendance_logs al
 JOIN accounts a ON al.account_id = a.account_id
 WHERE DATE(al.time_in) = CURDATE();
 
-CREATE OR REPLACE VIEW v_erp_dashboard_summary AS
+CREATE OR REPLACE SQL SECURITY INVOKER VIEW v_erp_dashboard_summary AS
 SELECT 'today_sales' AS metric_name, COALESCE(SUM(total_amount), 0) AS metric_value
 FROM pos_transactions
 WHERE DATE(transaction_datetime) = CURDATE()

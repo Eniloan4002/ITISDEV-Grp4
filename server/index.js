@@ -9,6 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const dbApi = require('./db');
+const rmis = require('./rmis');
+const attendance = require('./attendance');
+const sales = require('./sales');
+const dashboard = require('./dashboard');
+const admin = require('./admin');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -16,19 +21,37 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 // SI-10 role-based visible modules. '*' = all pages.
 const ROLE_PAGES = {
-  Admin: ['*'],
-  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/reservations', '/table-availability'],
-  Cashier: ['/dashboard', '/profile'],
-  Staff: ['/dashboard', '/profile', '/inventory', '/reservations', '/table-availability'],
+  Admin:   ['*'],
+  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/reservations', '/table-availability', '/stock-alerts', '/stock-adjustment', '/purchase-orders', '/supplier', '/sales', '/attendance', '/schedules', '/leave-requests', '/analytics'],
+  Cashier: ['/dashboard', '/profile', '/sales', '/attendance', '/schedules', '/leave-requests'],
+  Staff:   ['/dashboard', '/profile', '/inventory', '/reservations', '/table-availability', '/stock-alerts', '/attendance', '/schedules', '/leave-requests'],
 };
 
-// Pages that require auth + specific roles.
+// Pages that require auth + specific roles. Anything not listed is public (landing, login, css, js, images).
+// No session -> 302 /login; wrong role -> 403. Module role lists MUST mirror
+// public/js/rmis-modules.js (that only shapes the UI; THIS is the real gate).
+const ALL_ROLES = ['Admin', 'Manager', 'Cashier', 'Staff'];
 const PROTECTED_PAGES = {
-  '/register': ['Admin'],
-  '/admin-settings': ['Admin'],
-  '/inventory': ['Admin', 'Manager', 'Staff'],
-  '/reservations': ['Admin', 'Manager', 'Staff'],
+  '/dashboard': ALL_ROLES,         // apps home — any signed-in role
+  '/register': ['Admin'],          // "Create User" — admin only
+  '/admin-settings': ['Admin'],    // admin-only stub
+  // Inventory / reservations / table availability are served by the inline
+  // handlers below (AMDB-backed); role lists kept as they were on main.
+  '/inventory':          ['Admin', 'Manager', 'Staff'],
+  '/reservations':       ['Admin', 'Manager', 'Staff'],
   '/table-availability': ['Admin', 'Manager', 'Staff'],
+  // Sprint 2/3 module pages served by the router modules (rmis, sales, attendance).
+  '/stock-alerts':     ['Admin', 'Manager', 'Staff'],
+  '/stock-adjustment': ['Admin', 'Manager'],
+  '/purchase-orders':  ['Admin', 'Manager'],
+  '/supplier':         ['Admin', 'Manager'],
+  '/sales':            ['Admin', 'Manager', 'Cashier'],
+  // Attendance & Manpower — every employee can clock in, view their own
+  // schedule, and file leave; managers manage everyone (enforced in the API).
+  '/attendance':     ALL_ROLES,
+  '/schedules':      ALL_ROLES,
+  '/leave-requests': ALL_ROLES,
+  '/analytics':      ['Admin', 'Manager'],
 };
 
 // In-memory session store (MVP): restart forces re-login.
@@ -734,6 +757,19 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'PUT' && req.url.startsWith('/api/tables/')) {
       const id = req.url.split('/')[3];
       return handleUpdateTableStatus(req, res, id);
+    }
+
+    // Any remaining /api/* route is delegated to the Sprint 2/3 module routers.
+    // Each returns true once it has handled the request. Order matters only in
+    // that the inline handlers above already claimed inventory/reservations/tables.
+    if (req.url.startsWith('/api/')) {
+      if (await rmis.route(req, res, getSession)) return;
+      if (await attendance.route(req, res, getSession)) return;
+      if (await sales.route(req, res, getSession)) return;
+      if (await dashboard.route(req, res, getSession)) return;
+      if (await admin.route(req, res, getSession)) return;
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ message: 'Not found.' }));
     }
 
     if (req.method === 'GET') {

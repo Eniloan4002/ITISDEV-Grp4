@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedules &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Attendance &amp; Manpower</div>
+      <a class="side-link" href="/attendance">Time Clock</a>
+      <a class="side-link is-active" href="/schedules">Schedules</a>
+      <a class="side-link" href="/leave-requests">Leave Requests</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Schedules</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <!-- Manager-only: create a shift. -->
+      <div class="card" id="create-card" hidden>
+        <div class="card-head">Assign a shift</div>
+        <div class="modal-body">
+          <form id="shift-form" novalidate>
+            <div class="form-grid">
+              <div class="field-inline"><label>Employee *</label>
+                <select class="rmis-select" name="employeeId" id="s-emp" required></select></div>
+              <div class="field-inline"><label>Date *</label>
+                <input class="rmis-input" name="date" type="date" required></div>
+              <div class="field-inline"><label>Start time *</label>
+                <input class="rmis-input" name="start" type="time" required></div>
+              <div class="field-inline"><label>End time *</label>
+                <input class="rmis-input" name="end" type="time" required></div>
+            </div>
+            <div class="field-err" id="shift-err"></div>
+            <div style="margin-top:14px"><button type="submit" class="btn-primary" id="shift-submit">Add shift</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="field-inline" id="filter-emp-wrap" hidden>
+          <label for="f-emp">Employee</label>
+          <select class="rmis-select" id="f-emp"><option value="">All employees</option></select>
+        </div>
+        <div class="field-inline">
+          <label for="f-date">Date</label>
+          <input class="rmis-input" id="f-date" type="date">
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button class="btn-ghost" id="f-clear">Clear</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">Schedule</div>
+        <table class="mock">
+          <thead><tr><th>Date</th><th>Employee</th><th>Details</th><th>Type</th><th id="th-actions"></th></tr></thead>
+          <tbody id="sched-body"></tbody>
+        </table>
+        <div class="empty-state" id="sched-empty" hidden>No shifts or approved leave to show.</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="modal" hidden><div class="modal" id="modal-card"></div></div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/schedules.js"></script>
+</body>
+</html>

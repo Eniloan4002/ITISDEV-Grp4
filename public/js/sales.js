@@ -48,6 +48,10 @@
 
   // ---- list ----
   async function load() {
+    if (!MENU.length) {
+      const { ok, data } = await api('GET', '/api/sales/menu');
+      if (ok && data && Array.isArray(data.menu)) MENU = data.menu;
+    }
     const p = new URLSearchParams();
     if (fStatus.value) p.set('status', fStatus.value);
     if (fDate.value) p.set('date', fDate.value);
@@ -72,14 +76,32 @@
   }
 
   // ---- new bill ----
+  // Menu cache. pos_transaction_items.menu_item_id is NOT NULL, so a bill line
+  // must reference a real menu row — the cashier picks instead of typing.
+  let MENU = [];
+  function menuOptions() {
+    if (!MENU.length) return '<option value="">Menu unavailable</option>';
+    let html = '<option value="">— choose item —</option>';
+    let group = null;
+    for (const m of MENU) {
+      if (m.category !== group) {
+        if (group !== null) html += '</optgroup>';
+        group = m.category;
+        html += `<optgroup label="${esc(group)}">`;
+      }
+      html += `<option value="${m.id}" data-price="${m.price}" data-label="${esc(m.name)}">${esc(m.name)} — ₱${Number(m.price).toFixed(2)}</option>`;
+    }
+    return html + '</optgroup>';
+  }
+
   function lineRow() {
     return `<div class="line-row" data-line>
       <div class="field-inline"><label>Item</label>
-        <input class="rmis-input" data-f="name" placeholder="e.g. Beef Tapa"></div>
+        <select class="rmis-select" data-f="name">${menuOptions()}</select></div>
       <div class="field-inline"><label>Qty</label>
         <input class="rmis-input" data-f="quantity" type="number" min="0" step="any" value="1"></div>
       <div class="field-inline"><label>Unit price</label>
-        <input class="rmis-input" data-f="unitPrice" type="number" min="0" step="any" value="0"></div>
+        <input class="rmis-input" data-f="unitPrice" type="number" min="0" step="any" value="0" readonly></div>
       <button type="button" class="btn-ghost btn-sm" data-remove>Remove</button>
     </div>`;
   }
@@ -87,10 +109,12 @@
   function readLines() {
     const items = [];
     document.querySelectorAll('#bill-lines [data-line]').forEach((row) => {
-      const name = row.querySelector('[data-f="name"]').value.trim();
+      const sel = row.querySelector('[data-f="name"]');
+      const menuItemId = Number(sel.value || 0);
+      const name = menuItemId ? sel.options[sel.selectedIndex].dataset.label : '';
       const quantity = Number(row.querySelector('[data-f="quantity"]').value);
       const unitPrice = Number(row.querySelector('[data-f="unitPrice"]').value || 0);
-      if (name && quantity > 0) items.push({ name, quantity, unitPrice });
+      if (menuItemId && quantity > 0) items.push({ menuItemId, name, quantity, unitPrice });
     });
     return items;
   }
@@ -146,6 +170,16 @@
         if (lines.length > 1) { e.target.closest('[data-line]').remove(); refreshTotals(); }
       }
     });
+    // Selecting a menu item fills its price (the field is read-only, so the
+    // bill total always matches the menu rather than whatever was typed).
+    document.getElementById('bill-lines').addEventListener('change', (e) => {
+      if (!e.target.matches('[data-f="name"]')) return;
+      const opt = e.target.options[e.target.selectedIndex];
+      const row = e.target.closest('[data-line]');
+      row.querySelector('[data-f="unitPrice"]').value = opt && opt.dataset.price ? opt.dataset.price : 0;
+      refreshTotals();
+    });
+
     document.getElementById('modal-card').addEventListener('input', (e) => {
       if (e.target.matches('[data-f], #bill-discount')) refreshTotals();
     });

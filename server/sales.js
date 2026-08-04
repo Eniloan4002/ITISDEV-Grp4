@@ -63,6 +63,13 @@ async function saleDetail(id) {
 }
 
 // ---- list / detail ----
+// Menu list for the POS item picker.
+async function getMenu(req, res, getSession) {
+  const s = requireRole(req, res, getSession, SALES_ROLES);
+  if (!s) return;
+  sendJson(res, 200, { menu: await dbApi.listMenuItems() });
+}
+
 async function getSales(req, res, getSession, query) {
   if (!requireRole(req, res, getSession, SALES_ROLES)) return;
   const cashierId = query.get('cashier') ? Number(query.get('cashier')) : undefined;
@@ -92,10 +99,11 @@ async function postSale(req, res, getSession) {
   const items = [];
   for (const it of rawItems) {
     const name = (it.name || '').trim();
+    const menuItemId = it.menuItemId ? Number(it.menuItemId) : null;
     const quantity = Number(it.quantity);
     const unitPrice = Number(it.unitPrice);
     if (!name || !posNum(quantity) || !nonNegNum(unitPrice)) continue;
-    items.push({ name, quantity, unitPrice, lineTotal: round2(quantity * unitPrice) });
+    items.push({ name, menuItemId, quantity, unitPrice, lineTotal: round2(quantity * unitPrice) });
   }
   if (!items.length) return sendJson(res, 400, { message: 'Add at least one valid line item (name + positive quantity).' });
 
@@ -160,6 +168,7 @@ async function route(req, res, getSession) {
   const method = req.method;
   if (!p.startsWith('/api/sales')) return false;
 
+  if (p === '/api/sales/menu' && method === 'GET') { await getMenu(req, res, getSession); return true; }
   if (p === '/api/sales' && method === 'GET') { await getSales(req, res, getSession, q); return true; }
   if (p === '/api/sales' && method === 'POST') { await postSale(req, res, getSession); return true; }
   let m;

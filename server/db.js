@@ -1291,6 +1291,23 @@ async function voidSale(id) {
   return result;
 }
 
+// Menu items available to the POS, newest categories first. The POS needs these
+// because pos_transaction_items.menu_item_id is NOT NULL — a bill line must
+// reference a real menu row, so the cashier picks rather than free-types.
+async function listMenuItems() {
+  const [rows] = await pool.query(
+    `SELECT mi.menu_item_id AS id,
+            mi.item_name    AS name,
+            mi.selling_price AS price,
+            COALESCE(mc.category_name, 'Uncategorized') AS category
+     FROM menu_items mi
+     LEFT JOIN menu_categories mc ON mc.menu_category_id = mi.menu_category_id
+     WHERE mi.is_available = TRUE
+     ORDER BY mc.category_name, mi.item_name`
+  );
+  return rows;
+}
+
 module.exports = {
   init,
   pool,
@@ -1322,4 +1339,5 @@ module.exports = {
   findShiftById, listShiftsForDate, listShifts, createShift, updateShift, deleteShift,
   findLeaveById, listLeave, createLeave, setLeaveStatus, listApprovedLeave,
   createSale, listSales, findSaleById, listSaleItems, settleSale, voidSale,
+  listMenuItems,
 };

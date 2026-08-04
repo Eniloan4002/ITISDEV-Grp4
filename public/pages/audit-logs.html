@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audit Logs - AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="container container-wide">
+    <header class="page-header">
+      <h1>Audit Logs</h1>
+      <p class="subtitle">Review the immutable history of critical system actions.</p>
+    </header>
+
+    <section class="inventory-card">
+      <h2>Audit Trail</h2>
+      <form id="audit-filter" class="filters" novalidate>
+        <div class="field">
+          <label for="audit-keyword">Search</label>
+          <input type="text" id="audit-keyword" placeholder="Search action or details">
+        </div>
+        <div class="actions compact-actions">
+          <button type="submit">Search</button>
+          <button type="button" id="refresh-logs">Refresh</button>
+        </div>
+      </form>
+      <p class="muted">Audit entries are read-only and cannot be edited or deleted.</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Target</th>
+              <th>Details</th>
+              <th>IP Address</th>
+            </tr>
+          </thead>
+          <tbody id="audit-body">
+            <tr><td colspan="6" class="muted">Loading audit logs...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="actions">
+      <a href="/dashboard" class="cancel-link">&larr; Back to dashboard</a>
+    </div>
+  </main>
+
+  <script src="/js/audit-logs.js"></script>
+</body>
+</html>

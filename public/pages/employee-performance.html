@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Performance - AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <main class="container container-wide">
+    <header class="page-header">
+      <h1>Employee Performance Reports</h1>
+      <p class="subtitle">Track employee sales, orders, and punctuality by period.</p>
+    </header>
+
+    <section class="inventory-card">
+      <h2>Filter Performance</h2>
+      <form id="performance-form" class="filters" novalidate>
+        <div class="field">
+          <label for="employee-name">Employee Name</label>
+          <input type="text" id="employee-name" placeholder="Search employee">
+        </div>
+        <div class="field">
+          <label for="role">Role</label>
+          <input type="text" id="role" placeholder="Cashier / Manager">
+        </div>
+        <div class="field">
+          <label for="period">Period</label>
+          <input type="text" id="period" placeholder="Current Month">
+        </div>
+        <div class="actions compact-actions">
+          <button type="submit">View Report</button>
+          <button type="button" id="export-btn">Export CSV</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="inventory-card">
+      <h2>Create or Edit Report</h2>
+      <form id="report-editor" class="filters" novalidate>
+        <input type="hidden" id="report-id">
+        <div class="field">
+          <label for="report-employee-name">Employee Name</label>
+          <input type="text" id="report-employee-name" required>
+        </div>
+        <div class="field">
+          <label for="report-role">Role</label>
+          <input type="text" id="report-role" required>
+        </div>
+        <div class="field">
+          <label for="report-period">Period</label>
+          <input type="text" id="report-period" required>
+        </div>
+        <div class="field">
+          <label for="orders-served">Orders Served</label>
+          <input type="number" id="orders-served" min="0" value="0">
+        </div>
+        <div class="field">
+          <label for="sales-amount">Sales</label>
+          <input type="number" id="sales-amount" min="0" step="0.01" value="0">
+        </div>
+        <div class="field">
+          <label for="punctuality">Punctuality</label>
+          <input type="text" id="punctuality" placeholder="Excellent / On Time">
+        </div>
+        <div class="field">
+          <label for="notes">Notes</label>
+          <textarea id="notes" rows="3"></textarea>
+        </div>
+        <div class="actions compact-actions">
+          <button type="submit">Save Report</button>
+          <button type="button" id="cancel-edit">Cancel</button>
+          <button type="button" id="delete-selected" class="secondary">Delete Selected</button>
+        </div>
+        <p id="form-message" class="muted"></p>
+      </form>
+    </section>
+
+    <section class="inventory-card">
+      <h2>Performance Breakdown</h2>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Role</th>
+              <th>Orders Served</th>
+              <th>Sales</th>
+              <th>Punctuality</th>
+              <th>Period</th>
+            </tr>
+          </thead>
+          <tbody id="performance-body">
+            <tr><td colspan="6" class="muted">Loading performance data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="actions">
+      <a href="/dashboard" class="cancel-link">&larr; Back to dashboard</a>
+    </div>
+  </main>
+
+  <script src="/js/employee-performance.js"></script>
+</body>
+</html>

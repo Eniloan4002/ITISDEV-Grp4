@@ -4,23 +4,72 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Settings &mdash; AM Restaurant RMIS</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/dashboard.css">
 </head>
-<body>
-  <main class="container">
-    <header class="page-header">
-      <h1>Admin Settings</h1>
-      <p class="subtitle">Administrator-only configuration.</p>
-    </header>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
 
-    <section>
-      <p class="muted">Placeholder for system-wide settings. Only users with the
-      Admin role can reach this page.</p>
-    </section>
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Administration</div>
+      <a class="side-link is-active" href="/admin-settings">User Accounts</a>
+      <a class="side-link" href="/register">Create User</a>
+    </aside>
 
-    <div class="actions">
-      <a href="/dashboard" class="cancel-link">&larr; Back to dashboard</a>
-    </div>
-  </main>
+    <main class="content">
+      <div class="page-head">
+        <h1>Admin Settings</h1>
+        <span class="pill pill-live">Admin only</span>
+      </div>
+      <p class="muted" style="margin-bottom:18px">
+        Manage staff accounts, roles, and access. Changes take effect the next
+        time the affected user signs in.
+      </p>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <section class="kpi-row" id="kpi-row"></section>
+
+      <div class="toolbar">
+        <div class="field-inline grow">
+          <label for="f-search">Search</label>
+          <input class="rmis-input" id="f-search" type="search" placeholder="Name or email&hellip;">
+        </div>
+        <div class="field-inline">
+          <label for="f-role">Role</label>
+          <select class="rmis-select" id="f-role">
+            <option value="">All roles</option>
+            <option>Admin</option><option>Manager</option><option>Cashier</option><option>Staff</option>
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <a class="btn-primary" href="/register" style="text-decoration:none">+ Create User</a>
+      </div>
+
+      <div class="card">
+        <div class="card-head">User accounts</div>
+        <table class="mock">
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="users-body"></tbody>
+        </table>
+        <div class="empty-state" id="users-empty" hidden>No users match.</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="modal" hidden><div class="modal" id="modal-card"></div></div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/admin-settings.js"></script>
 </body>
 </html>

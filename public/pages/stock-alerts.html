@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Alerts &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Inventory</div>
+      <a class="side-link" href="/inventory">Ingredient Inventory</a>
+      <a class="side-link is-active" href="/stock-alerts">Stock Alerts</a>
+      <a class="side-link" id="nav-adjust" href="/stock-adjustment">Stock Adjustment</a>
+      <a class="side-link" id="nav-po" href="/purchase-orders">Purchase Orders</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Stock Alerts</h1>
+        <span class="pill pill-live">Live</span>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn-ghost btn-sm" id="btn-refresh">Refresh</button>
+      </div>
+
+      <div class="notice notice-ok" id="all-clear" hidden>
+        <strong>All stocked up.</strong> No ingredients are at or below their reorder level.
+      </div>
+
+      <section class="kpi-row" id="kpi-row"></section>
+
+      <div class="card">
+        <div class="card-head">Ingredients needing attention</div>
+        <table class="mock">
+          <thead>
+            <tr>
+              <th>Name</th><th>Category</th><th>Supplier</th>
+              <th class="num">On hand</th><th class="num">Reorder</th><th class="num">Shortfall</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-body"></tbody>
+        </table>
+        <div class="empty-state" id="alerts-empty" hidden>No low-stock items right now.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/stock-alerts.js"></script>
+</body>
+</html>

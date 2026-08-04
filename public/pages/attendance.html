@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Clock &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Attendance &amp; Manpower</div>
+      <a class="side-link is-active" href="/attendance">Time Clock</a>
+      <a class="side-link" href="/schedules">Schedules</a>
+      <a class="side-link" href="/leave-requests">Leave Requests</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Time Clock</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <div class="card clock-hero">
+        <div class="clock-now">
+          <div class="clock-time" id="clock-time">--:--</div>
+          <div class="clock-date" id="clock-date"></div>
+          <span class="clock-state off" id="clock-state">Not clocked in</span>
+        </div>
+        <div class="clock-actions">
+          <button class="btn-clock btn-clock-in" id="btn-in">Time In</button>
+          <button class="btn-clock btn-clock-out" id="btn-out" disabled>Time Out</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">My attendance logs</div>
+        <table class="mock">
+          <thead><tr><th>Date</th><th>Time In</th><th>Time Out</th><th class="num">Hours</th></tr></thead>
+          <tbody id="my-logs"></tbody>
+        </table>
+        <div class="empty-state" id="my-empty" hidden>No attendance records yet. Clock in to start.</div>
+      </div>
+
+      <!-- Managers only: everyone's logs, searchable by employee + date. -->
+      <div id="mgr-section" hidden>
+        <h2 class="section-title">All employee logs</h2>
+        <div class="toolbar">
+          <div class="field-inline">
+            <label for="f-emp">Employee</label>
+            <select class="rmis-select" id="f-emp"><option value="">All employees</option></select>
+          </div>
+          <div class="field-inline">
+            <label for="f-date">Date</label>
+            <input class="rmis-input" id="f-date" type="date">
+          </div>
+          <div class="field-inline">
+            <label>&nbsp;</label>
+            <button class="btn-ghost" id="f-clear">Clear</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">Attendance records</div>
+          <table class="mock">
+            <thead><tr><th>Employee</th><th>Date</th><th>Time In</th><th>Time Out</th><th class="num">Hours</th><th>Status</th></tr></thead>
+            <tbody id="all-logs"></tbody>
+          </table>
+          <div class="empty-state" id="all-empty" hidden>No records match the filter.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/attendance.js"></script>
+</body>
+</html>

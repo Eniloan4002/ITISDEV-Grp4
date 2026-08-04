@@ -14,6 +14,12 @@ const attendance = require('./attendance');
 const sales = require('./sales');
 const dashboard = require('./dashboard');
 const admin = require('./admin');
+const employeePerformance = require('./employee-performance');
+const auditLogs = require('./audit-logs');
+const suppliers = require('./suppliers');
+const pos = require('./pos');
+const refunds = require('./refunds');
+const reports = require('./reports');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -52,6 +58,8 @@ const PROTECTED_PAGES = {
   '/schedules':      ALL_ROLES,
   '/leave-requests': ALL_ROLES,
   '/analytics':      ['Admin', 'Manager'],
+  '/employee-performance': ['Admin', 'Manager'],
+  '/audit-logs':    ['Admin'],
 };
 
 // In-memory session store (MVP): restart forces re-login.
@@ -768,6 +776,12 @@ const server = http.createServer(async (req, res) => {
       if (await sales.route(req, res, getSession)) return;
       if (await dashboard.route(req, res, getSession)) return;
       if (await admin.route(req, res, getSession)) return;
+      if (await employeePerformance.route(req, res, getSession)) return;
+      if (await auditLogs.route(req, res, getSession)) return;
+      if (await suppliers.route(req, res, getSession)) return;
+      if (await pos.route(req, res, getSession)) return;
+      if (await refunds.route(req, res, getSession)) return;
+      if (await reports.route(req, res, getSession)) return;
       res.writeHead(404, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ message: 'Not found.' }));
     }

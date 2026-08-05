@@ -16,10 +16,6 @@ const dashboard = require('./dashboard');
 const admin = require('./admin');
 const employeePerformance = require('./employee-performance');
 const auditLogs = require('./audit-logs');
-const suppliers = require('./suppliers');
-const pos = require('./pos');
-const refunds = require('./refunds');
-const reports = require('./reports');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -778,10 +774,6 @@ const server = http.createServer(async (req, res) => {
       if (await admin.route(req, res, getSession)) return;
       if (await employeePerformance.route(req, res, getSession)) return;
       if (await auditLogs.route(req, res, getSession)) return;
-      if (await suppliers.route(req, res, getSession)) return;
-      if (await pos.route(req, res, getSession)) return;
-      if (await refunds.route(req, res, getSession)) return;
-      if (await reports.route(req, res, getSession)) return;
       res.writeHead(404, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ message: 'Not found.' }));
     }

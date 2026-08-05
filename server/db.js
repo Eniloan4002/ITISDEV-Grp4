@@ -1533,4 +1533,9 @@ module.exports = {
   findLeaveById, listLeave, createLeave, setLeaveStatus, listApprovedLeave,
   createSale, listSales, findSaleById, listSaleItems, settleSale, voidSale,
   listMenuItems,
+  // --- Sprint 5 (SI-26 employee performance, SI-27 audit logs) ---
+  listAuditLogs, createAuditLog,
+  listEmployeePerformanceReports, findEmployeePerformanceReportById,
+  createEmployeePerformanceReport, updateEmployeePerformanceReport,
+  deleteEmployeePerformanceReport,
 };

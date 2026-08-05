@@ -1,4 +1,4 @@
-# ITISDEV-Grp4 — AM Restaurant RMIS
+# ITISDEV-Grp4 - AM Restaurant RMIS
 
 Restaurant Management Information System for AM Restaurant (ITISDEV S12, Group 4).
 A public landing page plus a role-gated back office covering identity, inventory

@@ -83,6 +83,39 @@ async function init() {
          ('Staff', 'Standard staff access')`
       );
 
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS employee_performance_reports (
+          report_id INT PRIMARY KEY AUTO_INCREMENT,
+          employee_name VARCHAR(100) NOT NULL,
+          role_name VARCHAR(50) NOT NULL,
+          reporting_period VARCHAR(50) NOT NULL,
+          orders_served INT NOT NULL DEFAULT 0,
+          sales_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+          punctuality VARCHAR(50) NOT NULL DEFAULT 'N/A',
+          notes TEXT NULL,
+          created_by INT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (created_by) REFERENCES accounts(account_id)
+            ON UPDATE CASCADE ON DELETE SET NULL
+        )
+      `);
+
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          audit_log_id INT PRIMARY KEY AUTO_INCREMENT,
+          user_id INT NOT NULL,
+          user_email VARCHAR(100) NULL,
+          action_type VARCHAR(100) NOT NULL,
+          target_table VARCHAR(100) NOT NULL DEFAULT 'system',
+          details TEXT NULL,
+          ip_address VARCHAR(45) NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES accounts(account_id)
+            ON UPDATE CASCADE ON DELETE RESTRICT
+        )
+      `);
+
       // Older MySQL versions do not support "ADD COLUMN IF NOT EXISTS".
       //
       // Both columns are present in "SQL/AMDB creation script.sql", so on a
@@ -212,6 +245,145 @@ async function createReset(token, userId, expiresAt) {
     [userId, tokenHash, new Date(expiresAt)]
   );
   return result;
+}
+
+async function listEmployeePerformanceReports({ employeeName, role, period } = {}) {
+  const where = [];
+  const params = [];
+  if (employeeName) {
+    where.push('employee_name LIKE ?');
+    params.push(`%${employeeName}%`);
+  }
+  if (role) {
+    where.push('role_name LIKE ?');
+    params.push(`%${role}%`);
+  }
+  if (period) {
+    where.push('reporting_period LIKE ?');
+    params.push(`%${period}%`);
+  }
+
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const [rows] = await pool.query(
+    `SELECT
+       report_id AS id,
+       employee_name AS employeeName,
+       role_name AS role,
+       reporting_period AS period,
+       orders_served AS ordersServed,
+       sales_amount AS sales,
+       punctuality,
+       notes,
+       created_by AS createdBy,
+       created_at AS createdAt,
+       updated_at AS updatedAt
+     FROM employee_performance_reports
+     ${clause}
+     ORDER BY created_at DESC`,
+    params
+  );
+  return rows;
+}
+
+async function findEmployeePerformanceReportById(id) {
+  const [rows] = await pool.query(
+    `SELECT
+       report_id AS id,
+       employee_name AS employeeName,
+       role_name AS role,
+       reporting_period AS period,
+       orders_served AS ordersServed,
+       sales_amount AS sales,
+       punctuality,
+       notes,
+       created_by AS createdBy,
+       created_at AS createdAt,
+       updated_at AS updatedAt
+     FROM employee_performance_reports
+     WHERE report_id = ?
+     LIMIT 1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+async function createEmployeePerformanceReport(data) {
+  const [result] = await pool.query(
+    `INSERT INTO employee_performance_reports
+      (employee_name, role_name, reporting_period, orders_served, sales_amount, punctuality, notes, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.employeeName,
+      data.role,
+      data.period,
+      Number(data.ordersServed || 0),
+      Number(data.sales || 0),
+      data.punctuality || 'N/A',
+      data.notes || null,
+      data.createdBy || null,
+    ]
+  );
+  return Number(result.insertId);
+}
+
+async function updateEmployeePerformanceReport(id, data) {
+  const [result] = await pool.query(
+    `UPDATE employee_performance_reports
+     SET employee_name = ?, role_name = ?, reporting_period = ?, orders_served = ?, sales_amount = ?, punctuality = ?, notes = ?
+     WHERE report_id = ?`,
+    [
+      data.employeeName,
+      data.role,
+      data.period,
+      Number(data.ordersServed || 0),
+      Number(data.sales || 0),
+      data.punctuality || 'N/A',
+      data.notes || null,
+      id,
+    ]
+  );
+  return result.affectedRows > 0;
+}
+
+async function deleteEmployeePerformanceReport(id) {
+  const [result] = await pool.query('DELETE FROM employee_performance_reports WHERE report_id = ?', [id]);
+  return result.affectedRows > 0;
+}
+
+async function listAuditLogs({ keyword } = {}) {
+  const where = [];
+  const params = [];
+  if (keyword) {
+    where.push('(action_type LIKE ? OR details LIKE ? OR user_email LIKE ?)');
+    const term = `%${keyword}%`;
+    params.push(term, term, term);
+  }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const [rows] = await pool.query(
+    `SELECT
+       audit_log_id AS id,
+       user_id AS userId,
+       user_email AS userEmail,
+       action_type AS actionType,
+       target_table AS target,
+       details,
+       ip_address AS ipAddress,
+       created_at AS timestamp
+     FROM audit_logs
+     ${clause}
+     ORDER BY created_at DESC`,
+    params
+  );
+  return rows;
+}
+
+async function createAuditLog(data) {
+  const [result] = await pool.query(
+    `INSERT INTO audit_logs (user_id, user_email, action_type, target_table, details, ip_address)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [data.userId, data.userEmail || null, data.actionType, data.target || 'system', data.details || null, data.ipAddress || null]
+  );
+  return Number(result.insertId);
 }
 
 async function getReset(token) {
@@ -615,6 +787,26 @@ async function ensureSupplier(name) {
   const existing = await findSupplierByName(name);
   if (existing) return existing.id;
   return createSupplier(name);
+}
+
+async function createSupplierRecord(input) {
+  const [result] = await pool.query(
+    `INSERT INTO suppliers
+      (supplier_name, contact_person, email, phone_number, address, is_active)
+     VALUES (?, ?, ?, ?, ?, TRUE)`,
+    [input.companyName, input.contactPerson, input.email, input.phoneNumber, input.physicalAddress]
+  );
+  return Number(result.insertId);
+}
+
+async function updateSupplierRecord(id, input) {
+  const [result] = await pool.query(
+    `UPDATE suppliers
+     SET supplier_name = ?, contact_person = ?, email = ?, phone_number = ?, address = ?
+     WHERE supplier_id = ?`,
+    [input.companyName, input.contactPerson, input.email, input.phoneNumber, input.physicalAddress, id]
+  );
+  return result.affectedRows > 0;
 }
 
 // ===== Ingredients =====
@@ -1331,6 +1523,7 @@ module.exports = {
   // --- ported Sprint 2/3 helpers ---
   updateUserRole, deleteUser, countAdmins, listUsers,
   listSuppliers, findSupplierById, findSupplierByName, createSupplier, ensureSupplier,
+  createSupplierRecord, updateSupplierRecord,
   listIngredients, findIngredientById, updateIngredientMeta, listCategories,
   applyTransaction, listTransactions,
   createPurchaseOrder, listPurchaseOrders, findPurchaseOrderById, listPoItems,

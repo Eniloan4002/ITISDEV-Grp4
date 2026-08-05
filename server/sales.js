@@ -13,6 +13,7 @@
 // recipe entity yet), so settling a bill does not deduct stock.
 
 const dbApi = require('./db');
+const audit = require('./audit');
 
 const SALES_ROLES = ['Admin', 'Manager', 'Cashier']; // create / settle / view
 const MANAGER_ROLES = ['Admin', 'Manager'];          // void
@@ -152,11 +153,14 @@ async function settle(req, res, getSession, id) {
 
 // ---- void ----
 async function voidSale(req, res, getSession, id) {
-  if (!requireRole(req, res, getSession, MANAGER_ROLES)) return;
+  const s = requireRole(req, res, getSession, MANAGER_ROLES);
+  if (!s) return;
   const sale = await dbApi.findSaleById(id);
   if (!sale) return sendJson(res, 404, { message: 'Bill not found.' });
   if (sale.status !== 'Open') return sendJson(res, 400, { message: 'Only an open bill can be voided.' });
   await dbApi.voidSale(id);
+  audit.record(req, { userId: s.userId, email: s.email }, 'SALE_VOIDED', 'pos_transactions',
+    `Voided bill ${sale.bill_number} (total ${sale.total}).`);
   sendJson(res, 200, { sale: await saleDetail(id) });
 }
 

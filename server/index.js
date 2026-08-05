@@ -16,6 +16,7 @@ const dashboard = require('./dashboard');
 const admin = require('./admin');
 const employeePerformance = require('./employee-performance');
 const auditLogs = require('./audit-logs');
+const audit = require('./audit');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -161,6 +162,11 @@ async function handleRegister(req, res) {
   }
 
   console.log(`[email] Welcome email triggered for ${email} (role: ${data.role}).`);
+  const actor = getSession(req);
+  if (actor) {
+    audit.record(req, { userId: actor.userId, email: actor.email }, 'USER_CREATED', 'accounts',
+      `Created account ${email} with role ${data.role}.`);
+  }
   return sendJson(res, 201, {
     message: 'Account created. A welcome email has been sent to the staff member.',
   });
@@ -189,11 +195,17 @@ async function handleLogin(req, res) {
   }
 
   if (!user || !verifyPassword(data.password, user.password_hash)) {
+    // Only recordable when the address matches a real account: audit_logs.user_id
+    // is NOT NULL and foreign-keyed, so an unknown address has no actor to log.
+    if (user) {
+      audit.record(req, { userId: user.id, email: user.email }, 'LOGIN_FAILED', 'accounts', 'Incorrect password.');
+    }
     return sendJson(res, 401, { message: 'Invalid email or password.' });
   }
 
   const token = crypto.randomBytes(32).toString('hex');
   sessions.set(token, { userId: user.id, email: user.email, role: user.role });
+  audit.record(req, { userId: user.id, email: user.email }, 'LOGIN_SUCCESS', 'accounts', `Signed in as ${user.role}.`);
 
   res.writeHead(200, {
     'Content-Type': 'application/json',
@@ -204,6 +216,8 @@ async function handleLogin(req, res) {
 
 function handleLogout(req, res) {
   const token = parseCookies(req).sid;
+  const s = token ? sessions.get(token) : null;
+  if (s) audit.record(req, { userId: s.userId, email: s.email }, 'LOGOUT', 'accounts', 'Signed out.');
   if (token) sessions.delete(token);
   res.writeHead(200, {
     'Content-Type': 'application/json',

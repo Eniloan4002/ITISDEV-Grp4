@@ -1412,7 +1412,12 @@ const SALE_COLS = `
   t.transaction_no AS bill_number,
   COALESCE(t.notes, '') AS table_label,
   DATE_FORMAT(t.transaction_datetime, '%Y-%m-%d') AS sale_date,
+  -- Derived lifecycle. AMDB has no "Open" state, so it comes from the payments
+  -- table; the refund states are authoritative on the transaction itself and
+  -- must win, or a refunded bill would still read as merely Paid.
   CASE WHEN t.transaction_status = 'Voided' THEN 'Void'
+       WHEN t.transaction_status = 'Refunded' THEN 'Refunded'
+       WHEN t.transaction_status = 'Partially Refunded' THEN 'Partially Refunded'
        WHEN pay.payment_id IS NOT NULL THEN 'Paid'
        ELSE 'Open' END AS status,
   t.subtotal_amount AS subtotal,
@@ -1482,9 +1487,14 @@ async function listSales({ status, date, cashierId } = {}) {
   const params = [];
   if (date) { where.push('DATE(t.transaction_datetime) = ?'); params.push(date); }
   if (cashierId) { where.push('t.cashier_id = ?'); params.push(cashierId); }
+  // Filters must agree with the derived label above: a refunded bill reads as
+  // Refunded, so it must not also come back under Paid.
+  const SETTLED = "t.transaction_status NOT IN ('Voided','Refunded','Partially Refunded')";
   if (status === 'Void') where.push("t.transaction_status = 'Voided'");
-  else if (status === 'Paid') where.push("t.transaction_status <> 'Voided' AND pay.payment_id IS NOT NULL");
-  else if (status === 'Open') where.push("t.transaction_status <> 'Voided' AND pay.payment_id IS NULL");
+  else if (status === 'Paid') where.push(`${SETTLED} AND pay.payment_id IS NOT NULL`);
+  else if (status === 'Open') where.push(`${SETTLED} AND pay.payment_id IS NULL`);
+  else if (status === 'Refunded') where.push("t.transaction_status = 'Refunded'");
+  else if (status === 'Partially Refunded') where.push("t.transaction_status = 'Partially Refunded'");
   const [rows] = await pool.query(
     `SELECT ${SALE_COLS} ${SALE_FROM}
      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
@@ -1643,6 +1653,544 @@ async function listOpenStockAlerts() {
   return rows;
 }
 
+// ===== SI-17 Sales History =====
+//
+// Server-side filtering, parameterised throughout. Status is the derived
+// lifecycle value (Open/Paid/Void) plus AMDB's own refund states, so callers can
+// filter on either vocabulary.
+async function listSalesHistory({ transactionNo, from, to, cashierId, paymentMethod, status } = {}) {
+  const where = [];
+  const params = [];
+  if (transactionNo) { where.push('t.transaction_no LIKE ?'); params.push(`%${transactionNo}%`); }
+  if (from) { where.push('DATE(t.transaction_datetime) >= ?'); params.push(from); }
+  if (to) { where.push('DATE(t.transaction_datetime) <= ?'); params.push(to); }
+  if (cashierId) { where.push('t.cashier_id = ?'); params.push(cashierId); }
+  if (paymentMethod) { where.push('pay.payment_method = ?'); params.push(paymentMethod); }
+  if (status === 'Void') where.push("t.transaction_status = 'Voided'");
+  else if (status === 'Paid') where.push("t.transaction_status <> 'Voided' AND pay.payment_id IS NOT NULL");
+  else if (status === 'Open') where.push("t.transaction_status <> 'Voided' AND pay.payment_id IS NULL");
+  else if (status === 'Refunded') where.push("t.transaction_status = 'Refunded'");
+  else if (status === 'Partially Refunded') where.push("t.transaction_status = 'Partially Refunded'");
+
+  const [rows] = await pool.query(
+    `SELECT ${SALE_COLS},
+            t.transaction_status AS amdb_status,
+            (SELECT COALESCE(SUM(r.refund_amount), 0) FROM refunds r
+              WHERE r.transaction_id = t.transaction_id AND r.refund_status = 'Completed') AS refunded_amount,
+            (SELECT COUNT(*) FROM refunds r
+              WHERE r.transaction_id = t.transaction_id AND r.refund_status = 'Pending') AS pending_refunds
+     ${SALE_FROM}
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+     ORDER BY t.transaction_datetime DESC, t.transaction_id DESC
+     LIMIT 500`,
+    params
+  );
+  return rows;
+}
+
+// Line items with the quantity already refunded and what remains refundable —
+// SI-18 needs exactly this shape to validate a refund request.
+async function listSaleItemsWithRefunds(saleId) {
+  const [rows] = await pool.query(
+    `SELECT ti.transaction_item_id AS id,
+            ti.transaction_id AS sale_id,
+            ti.menu_item_id,
+            COALESCE(mi.item_name, '(removed item)') AS name,
+            ti.quantity,
+            ti.unit_price,
+            ti.line_total,
+            COALESCE((
+              SELECT SUM(ri.quantity_refunded) FROM refund_items ri
+              JOIN refunds r ON r.refund_id = ri.refund_id
+              WHERE ri.transaction_item_id = ti.transaction_item_id
+                AND r.refund_status = 'Completed'
+            ), 0) AS refunded_qty
+     FROM pos_transaction_items ti
+     LEFT JOIN menu_items mi ON mi.menu_item_id = ti.menu_item_id
+     WHERE ti.transaction_id = ?
+     ORDER BY ti.transaction_item_id`,
+    [saleId]
+  );
+  return rows.map((r) => ({ ...r, refundable_qty: Number(r.quantity) - Number(r.refunded_qty) }));
+}
+
+async function listCashiers() {
+  const [rows] = await pool.query(
+    `SELECT DISTINCT a.account_id AS id, CONCAT(a.first_name, ' ', a.last_name) AS name
+     FROM pos_transactions t JOIN accounts a ON a.account_id = t.cashier_id
+     ORDER BY name`
+  );
+  return rows;
+}
+
+// ===== SI-24 Sales Dashboard =====
+//
+// Every card and chart is driven by the same normalised [from, to] pair the
+// caller supplies, so the panels can never show mixed periods. Voided
+// transactions are excluded; refunded and partially refunded ones are included
+// because their gross revenue was real.
+const SALES_SCOPE = "t.transaction_status IN ('Completed', 'Refunded', 'Partially Refunded')";
+
+async function salesSummary(from, to) {
+  const [[totals]] = await pool.query(
+    `SELECT COALESCE(SUM(t.total_amount), 0) AS gross,
+            COUNT(*) AS transaction_count,
+            COALESCE(AVG(t.total_amount), 0) AS average_order_value
+     FROM pos_transactions t
+     WHERE ${SALES_SCOPE} AND DATE(t.transaction_datetime) BETWEEN ? AND ?`,
+    [from, to]
+  );
+  const [[refunds]] = await pool.query(
+    `SELECT COALESCE(SUM(r.refund_amount), 0) AS refunded
+     FROM refunds r JOIN pos_transactions t ON t.transaction_id = r.transaction_id
+     WHERE r.refund_status = 'Completed' AND DATE(t.transaction_datetime) BETWEEN ? AND ?`,
+    [from, to]
+  );
+  const gross = Number(totals.gross);
+  const refunded = Number(refunds.refunded);
+  return {
+    gross,
+    refunded,
+    net: gross - refunded,
+    transactionCount: Number(totals.transaction_count),
+    averageOrderValue: Number(totals.average_order_value),
+  };
+}
+
+async function topMenuItems(from, to, limit = 10) {
+  const [rows] = await pool.query(
+    `SELECT COALESCE(mi.item_name, '(removed item)') AS name,
+            SUM(ti.quantity) AS quantity,
+            SUM(ti.line_total) AS revenue
+     FROM pos_transaction_items ti
+     JOIN pos_transactions t ON t.transaction_id = ti.transaction_id
+     LEFT JOIN menu_items mi ON mi.menu_item_id = ti.menu_item_id
+     WHERE ${SALES_SCOPE} AND DATE(t.transaction_datetime) BETWEEN ? AND ?
+     GROUP BY ti.menu_item_id, name
+     ORDER BY quantity DESC, revenue DESC
+     LIMIT ?`,
+    [from, to, Number(limit)]
+  );
+  return rows;
+}
+
+async function salesByHour(from, to) {
+  const [rows] = await pool.query(
+    `SELECT HOUR(t.transaction_datetime) AS hour,
+            COUNT(*) AS transaction_count,
+            COALESCE(SUM(t.total_amount), 0) AS revenue
+     FROM pos_transactions t
+     WHERE ${SALES_SCOPE} AND DATE(t.transaction_datetime) BETWEEN ? AND ?
+     GROUP BY hour ORDER BY hour`,
+    [from, to]
+  );
+  // Fill the gaps so the bar chart has all 24 slots.
+  const byHour = new Map(rows.map((r) => [Number(r.hour), r]));
+  return Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    transactionCount: Number(byHour.get(h)?.transaction_count || 0),
+    revenue: Number(byHour.get(h)?.revenue || 0),
+  }));
+}
+
+// ===== SI-18 Refund Processing =====
+//
+// A refund is requested, then explicitly approved or rejected. Approval is the
+// only path that touches sales or inventory, and it does so in one transaction
+// with the rows locked, because remaining-refundable quantities are recomputed
+// at approval time and two approvers could otherwise both pass validation.
+
+const REFUND_COLS = `
+  r.refund_id AS id,
+  r.transaction_id AS sale_id,
+  t.transaction_no AS bill_number,
+  r.refund_amount AS amount,
+  r.refund_method AS method,
+  r.refund_reason AS reason,
+  r.refund_status AS status,
+  r.refund_datetime AS requested_at,
+  r.processed_by AS requested_by_id,
+  COALESCE(CONCAT(rq.first_name, ' ', rq.last_name), '') AS requested_by,
+  r.approved_by AS approved_by_id,
+  COALESCE(CONCAT(ap.first_name, ' ', ap.last_name), '') AS approved_by,
+  r.reviewed_by AS reviewed_by_id,
+  COALESCE(CONCAT(rv.first_name, ' ', rv.last_name), '') AS reviewed_by,
+  COALESCE(DATE_FORMAT(r.reviewed_at, '%Y-%m-%dT%H:%i:%s'), '') AS reviewed_at,
+  COALESCE(r.review_notes, '') AS review_notes`;
+
+const REFUND_FROM = `
+  FROM refunds r
+  JOIN pos_transactions t ON t.transaction_id = r.transaction_id
+  LEFT JOIN accounts rq ON rq.account_id = r.processed_by
+  LEFT JOIN accounts ap ON ap.account_id = r.approved_by
+  LEFT JOIN accounts rv ON rv.account_id = r.reviewed_by`;
+
+async function listRefunds({ status, saleId } = {}) {
+  const where = [];
+  const params = [];
+  if (status) { where.push('r.refund_status = ?'); params.push(status); }
+  if (saleId) { where.push('r.transaction_id = ?'); params.push(saleId); }
+  const [rows] = await pool.query(
+    `SELECT ${REFUND_COLS} ${REFUND_FROM}
+     ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+     ORDER BY r.refund_id DESC LIMIT 500`,
+    params
+  );
+  return rows;
+}
+
+async function findRefundById(id) {
+  const [rows] = await pool.query(`SELECT ${REFUND_COLS} ${REFUND_FROM} WHERE r.refund_id = ?`, [id]);
+  return rows[0] || undefined;
+}
+
+async function listRefundItems(refundId) {
+  const [rows] = await pool.query(
+    `SELECT ri.refund_item_id AS id, ri.transaction_item_id AS sale_item_id,
+            ri.quantity_refunded AS quantity, ri.refund_line_amount AS amount,
+            COALESCE(mi.item_name, '(removed item)') AS name, ti.menu_item_id
+     FROM refund_items ri
+     JOIN pos_transaction_items ti ON ti.transaction_item_id = ri.transaction_item_id
+     LEFT JOIN menu_items mi ON mi.menu_item_id = ti.menu_item_id
+     WHERE ri.refund_id = ? ORDER BY ri.refund_item_id`,
+    [refundId]
+  );
+  return rows;
+}
+
+// Create a Pending request. Quantities are validated against what is still
+// refundable, but the authoritative re-check happens again at approval.
+async function createRefundRequest({ saleId, requestedBy, reason, method, lines }) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[sale]] = await conn.query(
+      'SELECT transaction_id, transaction_status FROM pos_transactions WHERE transaction_id = ? FOR UPDATE',
+      [saleId]
+    );
+    if (!sale) throw Object.assign(new Error('Transaction not found.'), { code: 'NOT_FOUND' });
+    if (sale.transaction_status === 'Voided') {
+      throw Object.assign(new Error('A voided transaction cannot be refunded.'), { code: 'INVALID_STATE' });
+    }
+
+    let total = 0;
+    const priced = [];
+    for (const line of lines) {
+      const [[item]] = await conn.query(
+        `SELECT ti.transaction_item_id, ti.quantity, ti.unit_price,
+                COALESCE((SELECT SUM(ri.quantity_refunded) FROM refund_items ri
+                          JOIN refunds r2 ON r2.refund_id = ri.refund_id
+                          WHERE ri.transaction_item_id = ti.transaction_item_id
+                            AND r2.refund_status = 'Completed'), 0) AS refunded
+         FROM pos_transaction_items ti
+         WHERE ti.transaction_item_id = ? AND ti.transaction_id = ? FOR UPDATE`,
+        [line.saleItemId, saleId]
+      );
+      if (!item) {
+        throw Object.assign(new Error('A refund line does not belong to this transaction.'), { code: 'BAD_LINE' });
+      }
+      const remaining = Number(item.quantity) - Number(item.refunded);
+      const qty = Number(line.quantity);
+      if (!(qty > 0)) throw Object.assign(new Error('Refund quantity must be positive.'), { code: 'BAD_QTY' });
+      if (qty > remaining) {
+        throw Object.assign(
+          new Error(`Only ${remaining} unit(s) remain refundable on that line.`), { code: 'BAD_QTY' });
+      }
+      const amount = Math.round(qty * Number(item.unit_price) * 100) / 100;
+      total += amount;
+      priced.push({ saleItemId: item.transaction_item_id, qty, amount });
+    }
+
+    const [result] = await conn.query(
+      `INSERT INTO refunds
+         (transaction_id, processed_by, refund_datetime, refund_amount, refund_method,
+          refund_reason, refund_status)
+       VALUES (?, ?, NOW(), ?, ?, ?, 'Pending')`,
+      [saleId, requestedBy, Math.round(total * 100) / 100, method, reason]
+    );
+    const refundId = Number(result.insertId);
+
+    for (const line of priced) {
+      await conn.query(
+        `INSERT INTO refund_items (refund_id, transaction_item_id, quantity_refunded, refund_line_amount)
+         VALUES (?, ?, ?, ?)`,
+        [refundId, line.saleItemId, line.qty, line.amount]
+      );
+    }
+
+    await conn.commit();
+    return refundId;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+// Reject: records the reviewer and note, touches nothing else.
+async function rejectRefund(id, reviewerId, notes) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[r]] = await conn.query(
+      'SELECT refund_status FROM refunds WHERE refund_id = ? FOR UPDATE', [id]);
+    if (!r) throw Object.assign(new Error('Refund request not found.'), { code: 'NOT_FOUND' });
+    if (r.refund_status !== 'Pending') {
+      throw Object.assign(new Error(`This request is already ${r.refund_status}.`), { code: 'INVALID_STATE' });
+    }
+    await conn.query(
+      `UPDATE refunds SET refund_status = 'Rejected', reviewed_by = ?, reviewed_at = NOW(),
+       review_notes = ? WHERE refund_id = ?`,
+      [reviewerId, notes || null, id]
+    );
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Approve a refund. Follows the spec's ordered steps inside one transaction:
+ * lock, recompute remaining quantities, reject stale/excessive, mark approved,
+ * restore ingredients, add stock movements, sync alerts, mark completed, and set
+ * the original transaction to Refunded or Partially Refunded.
+ *
+ * Ingredient restoration reads menu_item_ingredients — the recipe table. It is
+ * currently empty, so nothing is restored yet; the moment recipes exist this
+ * becomes correct without further change. `restoredIngredients` in the result
+ * reports what actually moved so callers can surface the difference.
+ */
+async function approveRefund(id, approverId, notes) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. lock the request and its transaction
+    const [[refund]] = await conn.query(
+      'SELECT refund_id, transaction_id, refund_status FROM refunds WHERE refund_id = ? FOR UPDATE', [id]);
+    if (!refund) throw Object.assign(new Error('Refund request not found.'), { code: 'NOT_FOUND' });
+    if (refund.refund_status !== 'Pending') {
+      throw Object.assign(new Error(`This request is already ${refund.refund_status}.`), { code: 'INVALID_STATE' });
+    }
+    const saleId = refund.transaction_id;
+    await conn.query('SELECT transaction_id FROM pos_transactions WHERE transaction_id = ? FOR UPDATE', [saleId]);
+
+    const [lines] = await conn.query(
+      `SELECT ri.transaction_item_id, ri.quantity_refunded, ti.menu_item_id, ti.quantity
+       FROM refund_items ri
+       JOIN pos_transaction_items ti ON ti.transaction_item_id = ri.transaction_item_id
+       WHERE ri.refund_id = ? FOR UPDATE`,
+      [id]
+    );
+
+    // 2 & 3. recompute what remains refundable, excluding this request, and
+    // reject anything that has gone stale since it was raised
+    for (const line of lines) {
+      const [[agg]] = await conn.query(
+        `SELECT COALESCE(SUM(ri.quantity_refunded), 0) AS already
+         FROM refund_items ri JOIN refunds r ON r.refund_id = ri.refund_id
+         WHERE ri.transaction_item_id = ? AND r.refund_status = 'Completed' AND r.refund_id <> ?`,
+        [line.transaction_item_id, id]
+      );
+      const remaining = Number(line.quantity) - Number(agg.already);
+      if (Number(line.quantity_refunded) > remaining) {
+        throw Object.assign(
+          new Error(`Another refund was completed first; only ${remaining} unit(s) remain on one line.`),
+          { code: 'STALE' });
+      }
+    }
+
+    // 4. approved, with the approver and reviewer both recorded
+    await conn.query(
+      `UPDATE refunds SET refund_status = 'Approved', approved_by = ?, reviewed_by = ?,
+       reviewed_at = NOW(), review_notes = ? WHERE refund_id = ?`,
+      [approverId, approverId, notes || null, id]
+    );
+
+    // 5, 6 & 7. restore ingredients per recipe, log the movement, sync alerts
+    const restored = [];
+    for (const line of lines) {
+      const [recipe] = await conn.query(
+        'SELECT ingredient_id, quantity_required FROM menu_item_ingredients WHERE menu_item_id = ?',
+        [line.menu_item_id]
+      );
+      for (const ing of recipe) {
+        const qty = Number(ing.quantity_required) * Number(line.quantity_refunded);
+        if (!(qty > 0)) continue;
+        await conn.query(
+          `INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
+           VALUES (?, ?)
+           ON DUPLICATE KEY UPDATE current_quantity = current_quantity + VALUES(current_quantity),
+                                   last_updated = CURRENT_TIMESTAMP`,
+          [ing.ingredient_id, qty]
+        );
+        await conn.query(
+          `INSERT INTO stock_movements
+             (ingredient_id, movement_type, quantity_change, reference_no, reference_table,
+              reference_id, created_by, notes)
+           VALUES (?, 'Return', ?, ?, 'refunds', ?, ?, ?)`,
+          [ing.ingredient_id, qty, 'REF-' + String(id).padStart(3, '0'), id, approverId,
+           'Restored by approved refund.']
+        );
+        await syncStockAlerts(conn, ing.ingredient_id, approverId);
+        restored.push({ ingredientId: ing.ingredient_id, quantity: qty });
+      }
+    }
+
+    // 8. completed
+    await conn.query("UPDATE refunds SET refund_status = 'Completed' WHERE refund_id = ?", [id]);
+
+    // 9. fully refunded, or partially
+    const [[tally]] = await conn.query(
+      `SELECT
+         (SELECT COALESCE(SUM(quantity), 0) FROM pos_transaction_items WHERE transaction_id = ?) AS sold,
+         (SELECT COALESCE(SUM(ri.quantity_refunded), 0) FROM refund_items ri
+            JOIN refunds r ON r.refund_id = ri.refund_id
+            JOIN pos_transaction_items ti ON ti.transaction_item_id = ri.transaction_item_id
+            WHERE ti.transaction_id = ? AND r.refund_status = 'Completed') AS refunded`,
+      [saleId, saleId]
+    );
+    const status = Number(tally.refunded) >= Number(tally.sold) ? 'Refunded' : 'Partially Refunded';
+    await conn.query('UPDATE pos_transactions SET transaction_status = ? WHERE transaction_id = ?',
+      [status, saleId]);
+
+    await conn.commit(); // 10.
+    return { refundId: id, saleStatus: status, restoredIngredients: restored };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+// ===== SI-25 Inventory Reports =====
+//
+// The report is the ingredient list plus its derived stock status. Physical
+// counts write both the system and actual quantity so the archive can show the
+// discrepancy — quantity_change alone cannot reconstruct them.
+async function inventoryReport({ q, category, supplierId, stockStatus } = {}) {
+  const where = ['i.is_active = TRUE'];
+  const params = [];
+  if (q) { where.push('LOWER(i.ingredient_name) LIKE ?'); params.push('%' + String(q).toLowerCase() + '%'); }
+  if (category) { where.push('t.ingredient_type_name = ?'); params.push(category); }
+  if (supplierId) {
+    where.push('EXISTS (SELECT 1 FROM supplier_ingredients si WHERE si.ingredient_id = i.ingredient_id AND si.supplier_id = ?)');
+    params.push(supplierId);
+  }
+
+  const [rows] = await pool.query(
+    `SELECT ${INGREDIENT_COLS}, i.max_stock_level ${INGREDIENT_FROM}
+     WHERE ${where.join(' AND ')} ORDER BY i.ingredient_name`,
+    params
+  );
+
+  const decorated = rows.map((r) => {
+    const qty = Number(r.quantity);
+    const reorder = Number(r.reorder_level) || 0;
+    let status = 'In Stock';
+    if (qty <= 0) status = 'Out of Stock';
+    else if (qty <= reorder) status = 'Low Stock';
+    return { ...r, stock_status: status };
+  });
+
+  // Status is derived, so it has to be filtered after projection.
+  return stockStatus ? decorated.filter((r) => r.stock_status === stockStatus) : decorated;
+}
+
+/**
+ * Record a physical count. Locks the inventory row, stores the system quantity,
+ * computes the discrepancy, updates live stock, writes a stock_adjustments row
+ * and a 'Manual Adjustment' movement, and syncs alerts — all in one transaction.
+ * @returns {{previousQuantity:number, actualQuantity:number, discrepancy:number}}
+ */
+async function recordPhysicalCount({ ingredientId, actualQuantity, reason, userId }) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const [[row]] = await conn.query(
+      `SELECT COALESCE(inv.current_quantity, 0) AS qty
+       FROM ingredients i
+       LEFT JOIN ingredient_inventory inv ON inv.ingredient_id = i.ingredient_id
+       WHERE i.ingredient_id = ? FOR UPDATE`,
+      [ingredientId]
+    );
+    if (!row) throw Object.assign(new Error('Ingredient not found.'), { code: 'NOT_FOUND' });
+
+    const previous = Number(row.qty);
+    const actual = Number(actualQuantity);
+    const discrepancy = Math.round((actual - previous) * 100) / 100;
+
+    await conn.query(
+      `INSERT INTO ingredient_inventory (ingredient_id, current_quantity)
+       VALUES (?, ?)
+       ON DUPLICATE KEY UPDATE current_quantity = VALUES(current_quantity),
+                               last_updated = CURRENT_TIMESTAMP`,
+      [ingredientId, actual]
+    );
+
+    // 'Correction' is the enum value that matches a count reconciliation.
+    await conn.query(
+      `INSERT INTO stock_adjustments
+         (ingredient_id, adjusted_by, adjustment_type, quantity_change, reason,
+          system_quantity, actual_quantity)
+       VALUES (?, ?, 'Correction', ?, ?, ?, ?)`,
+      [ingredientId, userId, discrepancy, reason, previous, actual]
+    );
+
+    if (discrepancy !== 0) {
+      await conn.query(
+        `INSERT INTO stock_movements
+           (ingredient_id, movement_type, quantity_change, reference_table, created_by, notes)
+         VALUES (?, 'Manual Adjustment', ?, 'stock_adjustments', ?, ?)`,
+        [ingredientId, discrepancy, userId, 'Physical count: ' + reason]
+      );
+    }
+
+    await syncStockAlerts(conn, ingredientId, userId);
+    await conn.commit();
+    return { previousQuantity: previous, actualQuantity: actual, discrepancy };
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
+// The audit archive: timestamp, ingredient, expected, actual, discrepancy,
+// reason and user. Legacy rows predate the two columns and expose null there.
+async function listPhysicalCounts({ ingredientId, limit = 200 } = {}) {
+  const where = ["sa.adjustment_type = 'Correction'"];
+  const params = [];
+  if (ingredientId) { where.push('sa.ingredient_id = ?'); params.push(ingredientId); }
+  const [rows] = await pool.query(
+    `SELECT sa.stock_adjustment_id AS id,
+            sa.adjusted_at AS at,
+            i.ingredient_name AS ingredient,
+            i.unit_of_measure AS unit,
+            sa.system_quantity AS expected,
+            sa.actual_quantity AS actual,
+            sa.quantity_change AS discrepancy,
+            sa.reason,
+            COALESCE(CONCAT(a.first_name, ' ', a.last_name), '') AS user
+     FROM stock_adjustments sa
+     JOIN ingredients i ON i.ingredient_id = sa.ingredient_id
+     LEFT JOIN accounts a ON a.account_id = sa.adjusted_by
+     WHERE ${where.join(' AND ')}
+     ORDER BY sa.adjusted_at DESC, sa.stock_adjustment_id DESC
+     LIMIT ?`,
+    [...params, Number(limit)]
+  );
+  return rows;
+}
+
 module.exports = {
   init,
   pool,
@@ -1680,6 +2228,11 @@ module.exports = {
   // --- Sprint 5 (SI-26 employee performance, SI-27 audit logs) ---
   listAuditLogs, createAuditLog,
   syncStockAlerts, listOpenStockAlerts,
+  listSalesHistory, listSaleItemsWithRefunds, listCashiers,
+  salesSummary, topMenuItems, salesByHour,
+  listRefunds, findRefundById, listRefundItems,
+  createRefundRequest, approveRefund, rejectRefund,
+  inventoryReport, recordPhysicalCount, listPhysicalCounts,
   listEmployeePerformanceReports, findEmployeePerformanceReportById,
   createEmployeePerformanceReport, updateEmployeePerformanceReport,
   deleteEmployeePerformanceReport,

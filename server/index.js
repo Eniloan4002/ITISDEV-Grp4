@@ -14,6 +14,8 @@ const attendance = require('./attendance');
 const sales = require('./sales');
 const dashboard = require('./dashboard');
 const admin = require('./admin');
+const reports = require('./reports');
+const refunds = require('./refunds');
 const employeePerformance = require('./employee-performance');
 const auditLogs = require('./audit-logs');
 const audit = require('./audit');
@@ -57,6 +59,11 @@ const PROTECTED_PAGES = {
   '/schedules':      ALL_ROLES,
   '/leave-requests': ALL_ROLES,
   '/analytics':      ['Admin', 'Manager'],
+  // SI-17 history is open to cashiers; SI-24/SI-25 reporting is manager+ only.
+  '/sales-history':     ['Admin', 'Manager', 'Cashier'],
+  '/refunds':           ['Admin', 'Manager', 'Cashier'],
+  '/sales-dashboard':   ['Admin', 'Manager'],
+  '/inventory-report':  ['Admin', 'Manager'],
   '/employee-performance': ['Admin', 'Manager'],
   '/audit-logs':    ['Admin'],
 };
@@ -745,10 +752,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/api/password-reset/confirm') {
       return handleResetConfirm(req, res);
     }
-    if (req.method === 'GET' && req.url.startsWith('/api/inventory/meta')) {
+    // NOTE: bounded on purpose. A bare startsWith('/api/inventory') also
+    // matches '/api/inventory-report' (SI-25) and silently shadowed it.
+    if (req.method === 'GET' && /^\/api\/inventory\/meta(\?|$)/.test(req.url)) {
       return handleGetInventoryMeta(req, res);
     }
-    if (req.method === 'GET' && req.url.startsWith('/api/inventory')) {
+    if (req.method === 'GET' && /^\/api\/inventory(\/|\?|$)/.test(req.url)) {
       return handleGetInventory(req, res);
     }
     if (req.method === 'POST' && req.url === '/api/inventory') {
@@ -782,6 +791,8 @@ const server = http.createServer(async (req, res) => {
       if (await sales.route(req, res, getSession)) return;
       if (await dashboard.route(req, res, getSession)) return;
       if (await admin.route(req, res, getSession)) return;
+      if (await reports.route(req, res, getSession)) return;
+      if (await refunds.route(req, res, getSession)) return;
       if (await employeePerformance.route(req, res, getSession)) return;
       if (await auditLogs.route(req, res, getSession)) return;
       res.writeHead(404, { 'Content-Type': 'application/json' });

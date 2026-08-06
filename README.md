@@ -112,7 +112,10 @@ present → Paid, otherwise → Open.
 | Table reservations | `/reservations` | Admin, Manager, Staff | `GET /api/tables`, `POST /api/reservations` |
 | Table availability | `/table-availability` | Admin, Manager, Staff | `GET /api/tables` |
 | Dashboard KPIs | `/dashboard` | all | `GET /api/dashboard/summary` |
-| Analytics | `/analytics` | Admin, Manager | *placeholder — Sprint 4* |
+| Sales history | `/sales-history` | Admin, Manager, Cashier | `GET /api/sales-history`, `GET /api/sales-history/:id` |
+| Refunds | `/refunds` | Admin, Manager, Cashier | `GET/POST /api/refunds`, `POST /api/refunds/:id/{approve,reject}` |
+| Sales dashboard | `/sales-dashboard` | Admin, Manager | `GET /api/sales-dashboard` |
+| Inventory reports | `/inventory-report` | Admin, Manager | `GET /api/inventory-report`, `POST /api/inventory-report/:id/count` |
 
 Roles: **Admin, Manager, Cashier, Staff**.
 
@@ -120,17 +123,20 @@ Roles: **Admin, Manager, Cashier, Staff**.
 
 - Password reset has no email provider — the reset link is printed to the server
   console **and** shown on-screen after a request (by design, for the MVP).
-- The 15-minute account lockout from the SI-7 acceptance criteria is out of scope.
+- Login is throttled: five failed attempts per email and address inside a
+  15-minute window trigger a 15-minute lock (SI-7). Note that
+  `docs/sprint1-mvp-plan.md` originally descoped this from the MVP.
 - A partially received purchase order displays as **Sent**. AMDB's `order_status`
   enum has no partial state.
-- `/analytics` and parts of `/supplier` are placeholder screens with real role gating.
 - **`SQL/AMDB menu data.sql` contains placeholder prices.** No price list exists in
   this repo, so every sales total, VAT figure and dashboard KPI derives from invented
   numbers. Replace them before using any figure as output. Note that
   `docs/superpowers/specs/2026-07-24-sprint3-sprint5-backlogs-design.md` requires
   reading the real menu from the production database instead of seeding one.
-- **Not yet built:** SI-18 Refund Processing, SI-25 Inventory Reports,
-  SI-26 Employee Performance Reports, SI-27 Audit Logs.
+- **Approved refunds restore no stock yet.** Restoration reads
+  `menu_item_ingredients`, which is empty, so an approved refund reports zero
+  ingredient movements. The code is correct and starts working once recipes
+  exist; checkout deliberately does not deplete stock either, for the same reason.
 
 ## Deploying against a shared/VM database
 

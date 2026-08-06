@@ -29,7 +29,7 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 // SI-10 role-based visible modules. '*' = all pages.
 const ROLE_PAGES = {
   Admin:   ['*'],
-  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/reservations', '/table-availability', '/stock-alerts', '/stock-adjustment', '/purchase-orders', '/supplier', '/sales', '/attendance', '/schedules', '/leave-requests', '/analytics'],
+  Manager: ['/dashboard', '/profile', '/modules', '/inventory', '/reservations', '/table-availability', '/stock-alerts', '/stock-adjustment', '/purchase-orders', '/supplier', '/sales', '/attendance', '/schedules', '/leave-requests'],
   Cashier: ['/dashboard', '/profile', '/sales', '/attendance', '/schedules', '/leave-requests'],
   Staff:   ['/dashboard', '/profile', '/inventory', '/reservations', '/table-availability', '/stock-alerts', '/attendance', '/schedules', '/leave-requests'],
 };
@@ -58,7 +58,6 @@ const PROTECTED_PAGES = {
   '/attendance':     ALL_ROLES,
   '/schedules':      ALL_ROLES,
   '/leave-requests': ALL_ROLES,
-  '/analytics':      ['Admin', 'Manager'],
   // SI-17 history is open to cashiers; SI-24/SI-25 reporting is manager+ only.
   '/sales-history':     ['Admin', 'Manager', 'Cashier'],
   '/refunds':           ['Admin', 'Manager', 'Cashier'],

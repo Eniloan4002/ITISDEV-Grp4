@@ -411,8 +411,7 @@ section {
 }
 
 .table-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
   border-width: 3px;
 }
 

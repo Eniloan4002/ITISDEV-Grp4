@@ -3,53 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audit Logs - AM Restaurant RMIS</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <title>Audit Logs &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
 </head>
-<body>
-  <main class="container container-wide">
-    <header class="page-header">
-      <h1>Audit Logs</h1>
-      <p class="subtitle">Review the immutable history of critical system actions.</p>
-    </header>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
 
-    <section class="inventory-card">
-      <h2>Audit Trail</h2>
-      <form id="audit-filter" class="filters" novalidate>
-        <div class="field">
-          <label for="audit-keyword">Search</label>
-          <input type="text" id="audit-keyword" placeholder="Search action or details">
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Reporting</div>
+      <a class="side-link" href="/employee-performance">Employee Performance</a>
+      <a class="side-link is-active" href="/audit-logs">Audit Logs</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Audit Logs</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <div class="toolbar">
+        <form id="audit-filter" novalidate style="display:contents">
+          <div class="field-inline">
+            <label for="audit-keyword">Search</label>
+            <input class="rmis-input" type="text" id="audit-keyword" placeholder="Action, details or user&hellip;">
+          </div>
+          <div class="field-inline">
+            <label>&nbsp;</label>
+            <button type="submit" class="btn-primary">Search</button>
+          </div>
+          <div class="field-inline">
+            <label>&nbsp;</label>
+            <button type="button" class="btn-ghost" id="refresh-logs">Refresh</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          Audit trail
+          <span class="demo-note">&mdash; written by the system; read-only</span>
         </div>
-        <div class="actions compact-actions">
-          <button type="submit">Search</button>
-          <button type="button" id="refresh-logs">Refresh</button>
-        </div>
-      </form>
-      <p class="muted">Audit entries are read-only and cannot be edited or deleted.</p>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>User</th>
-              <th>Action</th>
-              <th>Target</th>
-              <th>Details</th>
-              <th>IP Address</th>
-            </tr>
-          </thead>
+        <table class="mock">
+          <thead><tr>
+            <th>Timestamp</th><th>User</th><th>Action</th>
+            <th>Target</th><th>Details</th><th>IP address</th>
+          </tr></thead>
           <tbody id="audit-body">
-            <tr><td colspan="6" class="muted">Loading audit logs...</td></tr>
+            <tr><td colspan="6" class="muted">Loading audit logs&hellip;</td></tr>
           </tbody>
         </table>
       </div>
-    </section>
+    </main>
+  </div>
 
-    <div class="actions">
-      <a href="/dashboard" class="cancel-link">&larr; Back to dashboard</a>
-    </div>
-  </main>
-
+  <!-- rmis-modules.js defines window.RMIS, which audit-logs.js awaits. Without
+       it the page script throws before rendering and the table stays on
+       "Loading audit logs…". -->
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
   <script src="/js/audit-logs.js"></script>
 </body>
 </html>

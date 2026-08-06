@@ -71,7 +71,7 @@
         <td>${escapeHtml(row.employeeName)}</td>
         <td>${escapeHtml(row.role)}</td>
         <td>${escapeHtml(row.ordersServed)}</td>
-        <td>${escapeHtml(row.sales)}</td>
+        <td>${window.RMISUI ? window.RMISUI.money(row.sales) : escapeHtml(row.sales)}</td>
         <td>${escapeHtml(row.punctuality)}</td>
         <td>${escapeHtml(row.period)}</td>
         <td>

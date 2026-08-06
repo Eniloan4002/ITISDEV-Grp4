@@ -10,6 +10,17 @@
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   }
 
+  // The API returns an ISO timestamp; show it in the viewer's local time rather
+  // than the raw "2026-08-06T02:23:37.000Z" string.
+  function stamp(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return escapeHtml(iso);
+    return d.toLocaleString('en-PH', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+  }
+
   async function loadLogs() {
     const params = new URLSearchParams();
     const keyword = document.getElementById('audit-keyword').value.trim();
@@ -30,7 +41,7 @@
 
     body.innerHTML = logs.map((log) => `
       <tr>
-        <td>${escapeHtml(log.timestamp)}</td>
+        <td>${stamp(log.timestamp)}</td>
         <td>${escapeHtml(log.userEmail || log.userId)}</td>
         <td>${escapeHtml(log.actionType)}</td>
         <td>${escapeHtml(log.target)}</td>

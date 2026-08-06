@@ -19,7 +19,7 @@
   --tc-muted: #8a7a6d;
   --tc-border: #e7d9c9;
   --tc-shadow: 0 8px 24px rgba(59, 42, 32, 0.10);
-  --tc-radius: 14px;
+  --tc-radius: 6px;
 }
 
 * {
@@ -181,20 +181,21 @@ a { color: inherit; }
   gap: 16px;
   align-items: flex-start;
   box-shadow: var(--tc-shadow);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  /* No transform on hover — the tiles stay put. Border colour and a slight
+     shadow carry the affordance instead. */
+  transition: box-shadow 0.12s ease, border-color 0.12s ease;
 }
 
 .app-tile:hover {
-  transform: translateY(-3px);
   border-color: var(--tc-terracotta);
-  box-shadow: 0 12px 28px rgba(59, 42, 32, 0.16);
+  box-shadow: 0 4px 14px rgba(59, 42, 32, 0.12);
 }
 
 .app-icon {
   flex: none;
   width: 46px;
   height: 46px;
-  border-radius: 12px;
+  border-radius: 6px;
   background: var(--tc-cream-2);
   color: var(--tc-terracotta);
   display: flex;
@@ -294,7 +295,7 @@ a { color: inherit; }
   background: var(--tc-cream-2);
   border: 1px dashed var(--tc-terracotta);
   color: var(--tc-brown-soft);
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 14px 18px;
   font-size: 14px;
   margin-bottom: 24px;
@@ -414,7 +415,7 @@ table.mock tr.row-expiring td { box-shadow: inset 3px 0 0 #d98a2b; }
 
 /* Notification banner (low-stock, success, error) */
 .notice {
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 12px 16px;
   font-size: 14px;
   margin-bottom: 18px;
@@ -487,7 +488,7 @@ table.mock tr.row-expiring td { box-shadow: inset 3px 0 0 #d98a2b; }
 .clock-actions { display: flex; gap: 12px; }
 .btn-clock {
   font-family: inherit; font-size: 16px; font-weight: 700;
-  border: none; border-radius: 12px; padding: 16px 26px; cursor: pointer; color: #fff;
+  border: none; border-radius: 6px; padding: 16px 26px; cursor: pointer; color: #fff;
   transition: filter 0.15s ease, opacity 0.15s ease;
 }
 .btn-clock:disabled { opacity: 0.45; cursor: default; }

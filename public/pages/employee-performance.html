@@ -3,105 +3,121 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Employee Performance - AM Restaurant RMIS</title>
-  <link rel="stylesheet" href="/css/styles.css">
+  <title>Employee Performance &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
 </head>
-<body>
-  <main class="container container-wide">
-    <header class="page-header">
-      <h1>Employee Performance Reports</h1>
-      <p class="subtitle">Track employee sales, orders, and punctuality by period.</p>
-    </header>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
 
-    <section class="inventory-card">
-      <h2>Filter Performance</h2>
-      <form id="performance-form" class="filters" novalidate>
-        <div class="field">
-          <label for="employee-name">Employee Name</label>
-          <input type="text" id="employee-name" placeholder="Search employee">
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Reporting</div>
+      <a class="side-link is-active" href="/employee-performance">Employee Performance</a>
+      <a class="side-link" href="/audit-logs">Audit Logs</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Employee Performance</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <!-- Filters -->
+      <form id="performance-form" class="toolbar" novalidate>
+        <div class="field-inline">
+          <label for="employee-name">Employee</label>
+          <input class="rmis-input" type="text" id="employee-name" placeholder="Search employee&hellip;">
         </div>
-        <div class="field">
+        <div class="field-inline">
           <label for="role">Role</label>
-          <input type="text" id="role" placeholder="Cashier / Manager">
+          <select class="rmis-select" id="role">
+            <option value="">All roles</option>
+            <option>Admin</option><option>Manager</option>
+            <option>Cashier</option><option>Staff</option>
+          </select>
         </div>
-        <div class="field">
+        <div class="field-inline">
           <label for="period">Period</label>
-          <input type="text" id="period" placeholder="Current Month">
+          <input class="rmis-input" type="text" id="period" placeholder="e.g. Aug 2026">
         </div>
-        <div class="actions compact-actions">
-          <button type="submit">View Report</button>
-          <button type="button" id="export-btn">Export CSV</button>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn-primary">View report</button>
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button type="button" class="btn-ghost" id="export-btn">Export CSV</button>
         </div>
       </form>
-    </section>
 
-    <section class="inventory-card">
-      <h2>Create or Edit Report</h2>
-      <form id="report-editor" class="filters" novalidate>
-        <input type="hidden" id="report-id">
-        <div class="field">
-          <label for="report-employee-name">Employee Name</label>
-          <input type="text" id="report-employee-name" required>
+      <!-- Create / edit -->
+      <div class="card">
+        <div class="card-head">Create or edit a report</div>
+        <div class="modal-body">
+          <form id="report-editor" novalidate>
+            <input type="hidden" id="report-id">
+            <div class="form-grid">
+              <div class="field-inline"><label>Employee name *</label>
+                <input class="rmis-input" id="report-employee-name" required></div>
+              <div class="field-inline"><label>Role *</label>
+                <select class="rmis-select" id="report-role" required>
+                  <option value="">— select —</option>
+                  <option>Admin</option><option>Manager</option>
+                  <option>Cashier</option><option>Staff</option>
+                </select></div>
+              <div class="field-inline"><label>Reporting period *</label>
+                <input class="rmis-input" id="report-period" placeholder="e.g. Aug 2026" required></div>
+              <div class="field-inline"><label>Orders served</label>
+                <input class="rmis-input" id="orders-served" type="number" min="0" step="1" value="0"></div>
+              <div class="field-inline"><label>Sales (&#8369;)</label>
+                <input class="rmis-input" id="sales-amount" type="number" min="0" step="any" value="0"></div>
+              <div class="field-inline"><label>Punctuality</label>
+                <input class="rmis-input" id="punctuality" placeholder="e.g. On time"></div>
+              <div class="field-inline full"><label>Notes</label>
+                <input class="rmis-input" id="notes" placeholder="Optional"></div>
+            </div>
+            <div class="field-err" id="form-message"></div>
+            <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+              <button type="submit" class="btn-primary">Save report</button>
+              <button type="button" class="btn-ghost" id="cancel-edit">Cancel</button>
+              <button type="button" class="btn-ghost btn-danger" id="delete-selected">Delete selected</button>
+            </div>
+          </form>
         </div>
-        <div class="field">
-          <label for="report-role">Role</label>
-          <input type="text" id="report-role" required>
-        </div>
-        <div class="field">
-          <label for="report-period">Period</label>
-          <input type="text" id="report-period" required>
-        </div>
-        <div class="field">
-          <label for="orders-served">Orders Served</label>
-          <input type="number" id="orders-served" min="0" value="0">
-        </div>
-        <div class="field">
-          <label for="sales-amount">Sales</label>
-          <input type="number" id="sales-amount" min="0" step="0.01" value="0">
-        </div>
-        <div class="field">
-          <label for="punctuality">Punctuality</label>
-          <input type="text" id="punctuality" placeholder="Excellent / On Time">
-        </div>
-        <div class="field">
-          <label for="notes">Notes</label>
-          <textarea id="notes" rows="3"></textarea>
-        </div>
-        <div class="actions compact-actions">
-          <button type="submit">Save Report</button>
-          <button type="button" id="cancel-edit">Cancel</button>
-          <button type="button" id="delete-selected" class="secondary">Delete Selected</button>
-        </div>
-        <p id="form-message" class="muted"></p>
-      </form>
-    </section>
+      </div>
 
-    <section class="inventory-card">
-      <h2>Performance Breakdown</h2>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Role</th>
-              <th>Orders Served</th>
-              <th>Sales</th>
-              <th>Punctuality</th>
-              <th>Period</th>
-            </tr>
-          </thead>
+      <!-- Results -->
+      <div class="card">
+        <div class="card-head">Performance breakdown</div>
+        <table class="mock">
+          <thead><tr>
+            <th>Employee</th><th>Role</th><th>Orders served</th>
+            <th>Sales</th><th>Punctuality</th><th>Period</th><th></th>
+          </tr></thead>
           <tbody id="performance-body">
-            <tr><td colspan="6" class="muted">Loading performance data...</td></tr>
+            <tr><td colspan="7" class="muted">Loading performance data&hellip;</td></tr>
           </tbody>
         </table>
       </div>
-    </section>
+    </main>
+  </div>
 
-    <div class="actions">
-      <a href="/dashboard" class="cancel-link">&larr; Back to dashboard</a>
-    </div>
-  </main>
-
+  <!-- rmis-modules.js defines window.RMIS, which employee-performance.js awaits.
+       Without it the page script throws before rendering and the table stays on
+       "Loading performance data…". -->
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
   <script src="/js/employee-performance.js"></script>
 </body>
 </html>

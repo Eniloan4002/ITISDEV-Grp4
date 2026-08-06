@@ -29,6 +29,11 @@
 }
 
 body.app {
+  /* styles.css sets `body { display: flex; justify-content: center }` to centre
+     its card layout. Pages that use the shell AND that stylesheet (inventory,
+     reservations, table availability) need normal block flow here; body.app
+     outranks the bare body selector, so this wins regardless of load order. */
+  display: block;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: var(--tc-cream);
   color: var(--tc-text);
@@ -289,6 +294,14 @@ a { color: inherit; }
   flex-wrap: wrap;
   margin-bottom: 18px;
 }
+
+/* Left-aligned page heading for the shell pages that still use styles.css for
+   their content (inventory, reservations, table availability). styles.css's
+   .page-header centres its text, which reads wrong beside a sidebar. */
+.page-head-block { margin-bottom: 22px; }
+.page-head-block h1 { font-size: 22px; font-weight: 700; color: var(--tc-text); }
+.page-head-block .subtitle { color: var(--tc-muted); font-size: 14px; margin-top: 4px; }
+
 .page-head h1 { font-size: 24px; font-weight: 700; }
 
 .banner {

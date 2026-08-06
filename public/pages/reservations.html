@@ -4,11 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Table Reservations - AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body>
-  <main class="container container-wide">
-    <header class="page-header">
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </div>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Reservations &amp; Tables</div>
+      <a class="side-link is-active" href="/reservations">Book a Reservation</a>
+      <a class="side-link" href="/table-availability">Table Availability</a>
+    </aside>
+
+    <main class="content">
+    <div class="page-head-block">
       <h1>Table Reservations</h1>
       <p class="subtitle">Book a table for your guests.</p>
     </header>
@@ -80,11 +99,10 @@
       </div>
     </section>
 
-    <div class="actions">
-      <a href="/dashboard" class="cancel-link">&larr; Back to Dashboard</a>
-    </div>
-  </main>
+    </main>
+  </div>
 
+  <script src="/js/rmis-modules.js"></script>
   <script src="/js/reservations.js"></script>
 </body>
 </html>

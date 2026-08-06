@@ -581,3 +581,8 @@ table.mock tr.row-leave td { background: #fbeecb55; }
    under a form that explains an irreversible action. */
 .tag-danger { background: rgba(180, 30, 30, 0.12); color: #a01a1a; }
 .field-hint { font-size: 12px; color: var(--tc-muted); margin-top: 8px; }
+
+/* Home screen module categories: a vertical stack of headed sections, each
+   containing its own 3-up tile grid. The container must not itself be a grid or
+   the headings would be laid out as columns beside the tiles. */
+.module-groups { display: flex; flex-direction: column; }

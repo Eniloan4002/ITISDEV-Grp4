@@ -50,9 +50,25 @@ function esc(v) {
       </a>`;
   }
 
-  // Module grid, filtered to the roles the current user may access.
+  // One section per umbrella category, in the order GROUPS declares, each
+  // filtered to the roles this user may access. A group with nothing visible is
+  // omitted entirely rather than left as an empty heading — a Cashier, for
+  // instance, sees no Reservations & Tables section at all.
   const visible = window.RMIS.MODULES.filter((m) => m.roles.includes(me.role));
-  document.getElementById('app-grid').innerHTML = visible.map(tile).join('');
+  const sections = window.RMIS.GROUPS
+    .map((group) => ({ group, items: visible.filter((m) => m.group === group) }))
+    .filter((s) => s.items.length);
+
+  // Anything without a recognised group would otherwise vanish silently; collect
+  // it under a trailing "Other" heading so a registry typo is visible.
+  const grouped = new Set(sections.flatMap((s) => s.items));
+  const ungrouped = visible.filter((m) => !grouped.has(m));
+  if (ungrouped.length) sections.push({ group: 'Other', items: ungrouped });
+
+  document.getElementById('app-grid').innerHTML = sections.map((s) => `
+    <h2 class="section-title">${esc(s.group)}</h2>
+    <div class="app-grid">${s.items.map(tile).join('')}</div>
+  `).join('');
 
   // Administration section (Admin only) — real Sprint 1 pages.
   const adminLinks = window.RMIS.ADMIN_LINKS.filter((l) => l.roles.includes(me.role));

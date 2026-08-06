@@ -25,29 +25,48 @@
     user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   };
 
-  // The RMIS modules. `sprint` = the real screen is still a placeholder and is
-  // scheduled for that sprint; no `sprint` key means the screen is live.
-  // Role lists MUST mirror PROTECTED_PAGES in server/index.js — the server gate
-  // is the real enforcement; this only decides which tiles get drawn.
+  // Umbrella categories for the home screen. GROUPS fixes the display order;
+  // each module names its group. The sidebar on every module page uses the same
+  // grouping, so a tile and the page it opens agree on where the module lives.
+  const GROUPS = [
+    'Inventory & Procurement',
+    'Sales & Billing',
+    'Attendance & Manpower',
+    'Reservations & Tables',
+    'Reporting & Audit',
+  ];
+
+  // `sprint` = the screen is still a placeholder scheduled for that sprint; no
+  // `sprint` key means it is live. Role lists MUST mirror PROTECTED_PAGES in
+  // server/index.js — the server gate is the real enforcement; this only decides
+  // which tiles get drawn.
   const MODULES = [
-    { key: 'inventory',    href: '/inventory',        label: 'Ingredient Inventory', desc: 'Stock levels & movement',     roles: ['Admin', 'Manager', 'Staff'] },
-    { key: 'alerts',       href: '/stock-alerts',     label: 'Stock Alerts',         desc: 'Low & out-of-stock items',    roles: ['Admin', 'Manager', 'Staff'] },
-    { key: 'adjustment',   href: '/stock-adjustment', label: 'Stock Adjustment',     desc: 'Damage, spoilage, returns',   roles: ['Admin', 'Manager'] },
-    { key: 'purchase',     href: '/purchase-orders',  label: 'Purchase Orders',      desc: 'Procure & receive goods',     roles: ['Admin', 'Manager'] },
-    { key: 'sales',        href: '/sales',            label: 'Sales & Billing',      desc: 'Bills, payments & receipts',  roles: ['Admin', 'Manager', 'Cashier'] },
-    { key: 'sales',        href: '/sales-history',    label: 'Sales History',        desc: 'Search past transactions',    roles: ['Admin', 'Manager', 'Cashier'] },
-    { key: 'sales',        href: '/refunds',          label: 'Refunds',              desc: 'Request & approve refunds',   roles: ['Admin', 'Manager', 'Cashier'] },
-    { key: 'analytics',    href: '/sales-dashboard',  label: 'Sales Dashboard',      desc: 'Revenue, top items, peaks',   roles: ['Admin', 'Manager'] },
-    { key: 'alerts',       href: '/inventory-report', label: 'Inventory Reports',    desc: 'Stock report & physical count', roles: ['Admin', 'Manager'] },
-    { key: 'attendance',   href: '/attendance',       label: 'Attendance',           desc: 'Clock in, clock out, logs',   roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-    { key: 'attendance',   href: '/schedules',        label: 'Shift Schedules',      desc: 'Plan & assign shifts',        roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-    { key: 'reservations', href: '/leave-requests',   label: 'Leave Requests',       desc: 'File & approve leave',        roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
-    // Built on main by the AMDB/MySQL work — live, not placeholders.
-    { key: 'reservations', href: '/reservations',       label: 'Reservations & Tables',  desc: 'Booking & table management', roles: ['Admin', 'Manager', 'Staff'] },
-    { key: 'reservations', href: '/table-availability', label: 'Table Availability',     desc: 'Live floor status',          roles: ['Admin', 'Manager', 'Staff'] },
-    { key: 'supplier',     href: '/supplier',     label: 'Supplier & Commissary', desc: 'Records, contacts & billing', roles: ['Admin', 'Manager'] },
-    { key: 'analytics',    href: '/employee-performance', label: 'Employee Performance', desc: 'Staff productivity and reports', roles: ['Admin', 'Manager'] },
-    { key: 'settings',     href: '/audit-logs',  label: 'Audit Logs',           desc: 'Immutable system activity log', roles: ['Admin'] },
+    // --- Inventory & Procurement ---
+    { key: 'inventory',    group: 'Inventory & Procurement', href: '/inventory',        label: 'Ingredient Inventory', desc: 'Stock levels & movement',       roles: ['Admin', 'Manager', 'Staff'] },
+    { key: 'alerts',       group: 'Inventory & Procurement', href: '/stock-alerts',     label: 'Stock Alerts',         desc: 'Low & out-of-stock items',      roles: ['Admin', 'Manager', 'Staff'] },
+    { key: 'adjustment',   group: 'Inventory & Procurement', href: '/stock-adjustment', label: 'Stock Adjustment',     desc: 'Damage, spoilage, returns',     roles: ['Admin', 'Manager'] },
+    { key: 'purchase',     group: 'Inventory & Procurement', href: '/purchase-orders',  label: 'Purchase Orders',      desc: 'Procure & receive goods',       roles: ['Admin', 'Manager'] },
+    { key: 'supplier',     group: 'Inventory & Procurement', href: '/supplier',         label: 'Supplier & Commissary', desc: 'Records, contacts & billing',  roles: ['Admin', 'Manager'] },
+    { key: 'alerts',       group: 'Inventory & Procurement', href: '/inventory-report', label: 'Inventory Reports',    desc: 'Stock report & physical count', roles: ['Admin', 'Manager'] },
+
+    // --- Sales & Billing ---
+    { key: 'sales',        group: 'Sales & Billing', href: '/sales',           label: 'Sales & Billing',  desc: 'Bills, payments & receipts', roles: ['Admin', 'Manager', 'Cashier'] },
+    { key: 'sales',        group: 'Sales & Billing', href: '/sales-history',   label: 'Sales History',    desc: 'Search past transactions',   roles: ['Admin', 'Manager', 'Cashier'] },
+    { key: 'sales',        group: 'Sales & Billing', href: '/refunds',         label: 'Refunds',          desc: 'Request & approve refunds',  roles: ['Admin', 'Manager', 'Cashier'] },
+    { key: 'analytics',    group: 'Sales & Billing', href: '/sales-dashboard', label: 'Sales Dashboard',  desc: 'Revenue, top items, peaks',  roles: ['Admin', 'Manager'] },
+
+    // --- Attendance & Manpower ---
+    { key: 'attendance',   group: 'Attendance & Manpower', href: '/attendance',     label: 'Attendance',      desc: 'Clock in, clock out, logs', roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
+    { key: 'attendance',   group: 'Attendance & Manpower', href: '/schedules',      label: 'Shift Schedules', desc: 'Plan & assign shifts',      roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
+    { key: 'reservations', group: 'Attendance & Manpower', href: '/leave-requests', label: 'Leave Requests',  desc: 'File & approve leave',      roles: ['Admin', 'Manager', 'Cashier', 'Staff'] },
+
+    // --- Reservations & Tables ---
+    { key: 'reservations', group: 'Reservations & Tables', href: '/reservations',       label: 'Reservations & Tables', desc: 'Booking & table management', roles: ['Admin', 'Manager', 'Staff'] },
+    { key: 'reservations', group: 'Reservations & Tables', href: '/table-availability', label: 'Table Availability',    desc: 'Live floor status',          roles: ['Admin', 'Manager', 'Staff'] },
+
+    // --- Reporting & Audit ---
+    { key: 'analytics',    group: 'Reporting & Audit', href: '/employee-performance', label: 'Employee Performance', desc: 'Staff productivity and reports', roles: ['Admin', 'Manager'] },
+    { key: 'settings',     group: 'Reporting & Audit', href: '/audit-logs',           label: 'Audit Logs',           desc: 'Immutable system activity log',  roles: ['Admin'] },
   ];
 
   // Admin/identity links (real Sprint 1 pages) surfaced on the home screen.
@@ -85,5 +104,5 @@
     return me;
   })();
 
-  window.RMIS = { ICONS, MODULES, ADMIN_LINKS, ready };
+  window.RMIS = { ICONS, GROUPS, MODULES, ADMIN_LINKS, ready };
 })();

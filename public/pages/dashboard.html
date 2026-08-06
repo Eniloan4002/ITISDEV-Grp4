@@ -27,9 +27,10 @@
     <!-- Live KPI tiles from GET /api/dashboard/summary, filtered to this role. -->
     <section class="kpi-row" id="kpi-row"></section>
 
-    <!-- Module app grid (role-filtered). -->
-    <h2 class="section-title">Modules</h2>
-    <section class="app-grid" id="app-grid"></section>
+    <!-- Module tiles, grouped by umbrella category and role-filtered. Each
+         category renders its own .section-title, so Administration below is a
+         peer heading rather than a different level. -->
+    <section class="module-groups" id="app-grid"></section>
 
     <!-- Administration (Admin only; the whole section is removed for other roles). -->
     <section id="admin-section">

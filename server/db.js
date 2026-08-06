@@ -766,13 +766,50 @@ async function listUsers() {
 
 const SUPPLIER_COLS = `s.supplier_id AS id, s.supplier_name AS name,
   COALESCE(s.contact_person,'') AS contact_person, COALESCE(s.email,'') AS email,
-  COALESCE(s.phone_number,'') AS phone, COALESCE(s.address,'') AS address, s.created_at`;
+  COALESCE(s.phone_number,'') AS phone, COALESCE(s.address,'') AS address,
+  COALESCE(s.billing_address,'') AS billing_address,
+  COALESCE(s.tax_identification_no,'') AS tin,
+  s.is_active, s.created_at, s.updated_at`;
 
-async function listSuppliers() {
+// SI-15: search spans company name, contact person, email, phone, TIN and both
+// addresses. Parameterised — the term is never concatenated into the SQL.
+async function listSuppliers({ q } = {}) {
+  const where = ['s.is_active = TRUE'];
+  const params = [];
+  if (q) {
+    where.push(`(s.supplier_name LIKE ? OR s.contact_person LIKE ? OR s.email LIKE ?
+                 OR s.phone_number LIKE ? OR s.address LIKE ? OR s.billing_address LIKE ?
+                 OR s.tax_identification_no LIKE ?)`);
+    const term = `%${q}%`;
+    params.push(term, term, term, term, term, term, term);
+  }
   const [rows] = await pool.query(
-    `SELECT ${SUPPLIER_COLS} FROM suppliers s WHERE s.is_active = TRUE ORDER BY s.supplier_name`
+    `SELECT ${SUPPLIER_COLS} FROM suppliers s WHERE ${where.join(' AND ')} ORDER BY s.supplier_name`,
+    params
   );
   return rows;
+}
+
+// Case-insensitive name clash check. `exceptId` lets an update keep its own name.
+async function supplierNameTaken(name, exceptId) {
+  const [rows] = await pool.query(
+    `SELECT supplier_id FROM suppliers
+     WHERE LOWER(supplier_name) = LOWER(?) AND supplier_id <> ? LIMIT 1`,
+    [name, exceptId || 0]
+  );
+  return rows.length > 0;
+}
+
+async function updateSupplier(id, { name, contactPerson, email, phone, address, billingAddress, tin }) {
+  const [result] = await pool.query(
+    `UPDATE suppliers
+     SET supplier_name = ?, contact_person = ?, email = ?, phone_number = ?,
+         address = ?, billing_address = ?, tax_identification_no = ?,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE supplier_id = ?`,
+    [name, contactPerson, email, phone, address, billingAddress, tin, id]
+  );
+  return result;
 }
 
 async function findSupplierById(id) {
@@ -785,10 +822,16 @@ async function findSupplierByName(name) {
   return rows[0] || undefined;
 }
 
-async function createSupplier(name) {
+// Accepts a bare name (ensureSupplier's legacy call) or the full SI-15 record.
+async function createSupplier(input) {
+  const d = typeof input === 'string' ? { name: input } : (input || {});
   const [result] = await pool.query(
-    'INSERT INTO suppliers (supplier_name, is_active) VALUES (?, TRUE)',
-    [name]
+    `INSERT INTO suppliers
+       (supplier_name, contact_person, email, phone_number, address,
+        billing_address, tax_identification_no, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)`,
+    [d.name, d.contactPerson || null, d.email || null, d.phone || null,
+     d.address || null, d.billingAddress || null, d.tin || null]
   );
   return Number(result.insertId);
 }
@@ -1510,6 +1553,96 @@ async function listMenuItems() {
   return rows;
 }
 
+// ===== Stock alert synchronisation (SI-25 cross-cutting) =====
+//
+// The spec requires every checkout, approved refund, inventory transaction and
+// physical count to reconcile `stock_alerts`: open or update a quantity alert
+// when stock reaches a threshold, and resolve open quantity alerts when stock
+// recovers above the reorder level. `stock_alerts` previously had no code at
+// all — the alerts page computed low stock on the fly instead.
+//
+// Takes a connection so callers can run it inside their own transaction.
+// Only quantity alerts are touched; 'Expiring Soon' and 'Overstock' are managed
+// elsewhere and must not be resolved by a quantity change.
+const QUANTITY_ALERTS = ['Low Stock', 'Out of Stock'];
+
+async function syncStockAlerts(conn, ingredientId, userId) {
+  const db = conn || pool;
+  const [rows] = await db.query(
+    `SELECT i.ingredient_name, i.reorder_level, COALESCE(inv.current_quantity, 0) AS qty
+     FROM ingredients i
+     LEFT JOIN ingredient_inventory inv ON inv.ingredient_id = i.ingredient_id
+     WHERE i.ingredient_id = ?`,
+    [ingredientId]
+  );
+  if (!rows.length) return null;
+
+  const { ingredient_name: name, reorder_level: reorder, qty } = rows[0];
+  const level = Number(qty);
+  const threshold = Number(reorder) || 0;
+
+  let wanted = null;
+  if (level <= 0) wanted = 'Out of Stock';
+  else if (level <= threshold) wanted = 'Low Stock';
+
+  const [open] = await db.query(
+    `SELECT stock_alert_id, alert_type FROM stock_alerts
+     WHERE ingredient_id = ? AND alert_status = 'Open' AND alert_type IN (?, ?)`,
+    [ingredientId, QUANTITY_ALERTS[0], QUANTITY_ALERTS[1]]
+  );
+
+  if (!wanted) {
+    // Recovered above the reorder level — resolve any open quantity alert.
+    if (open.length) {
+      await db.query(
+        `UPDATE stock_alerts SET alert_status = 'Resolved', resolved_at = NOW(), resolved_by = ?
+         WHERE stock_alert_id IN (${open.map(() => '?').join(',')})`,
+        [userId || null, ...open.map((a) => a.stock_alert_id)]
+      );
+    }
+    return { alert: null, resolved: open.length };
+  }
+
+  const message = wanted === 'Out of Stock'
+    ? `${name} is out of stock.`
+    : `${name} is at ${level}, at or below its reorder level of ${threshold}.`;
+
+  const existing = open.find((a) => a.alert_type === wanted);
+  if (existing) {
+    await db.query('UPDATE stock_alerts SET alert_message = ? WHERE stock_alert_id = ?',
+      [message, existing.stock_alert_id]);
+  } else {
+    // Severity changed (e.g. Low -> Out): resolve the stale one, open the new.
+    const stale = open.filter((a) => a.alert_type !== wanted).map((a) => a.stock_alert_id);
+    if (stale.length) {
+      await db.query(
+        `UPDATE stock_alerts SET alert_status = 'Resolved', resolved_at = NOW(), resolved_by = ?
+         WHERE stock_alert_id IN (${stale.map(() => '?').join(',')})`,
+        [userId || null, ...stale]
+      );
+    }
+    await db.query(
+      `INSERT INTO stock_alerts (ingredient_id, alert_type, alert_message, alert_status)
+       VALUES (?, ?, ?, 'Open')`,
+      [ingredientId, wanted, message]
+    );
+  }
+  return { alert: wanted, resolved: 0 };
+}
+
+async function listOpenStockAlerts() {
+  const [rows] = await pool.query(
+    `SELECT sa.stock_alert_id AS id, sa.ingredient_id, i.ingredient_name AS name,
+            sa.alert_type AS type, sa.alert_message AS message,
+            sa.alert_status AS status, sa.triggered_at
+     FROM stock_alerts sa
+     JOIN ingredients i ON i.ingredient_id = sa.ingredient_id
+     WHERE sa.alert_status = 'Open'
+     ORDER BY FIELD(sa.alert_type, 'Out of Stock', 'Low Stock'), i.ingredient_name`
+  );
+  return rows;
+}
+
 module.exports = {
   init,
   pool,
@@ -1533,6 +1666,7 @@ module.exports = {
   // --- ported Sprint 2/3 helpers ---
   updateUserRole, deleteUser, countAdmins, listUsers,
   listSuppliers, findSupplierById, findSupplierByName, createSupplier, ensureSupplier,
+  updateSupplier, supplierNameTaken,
   createSupplierRecord, updateSupplierRecord,
   listIngredients, findIngredientById, updateIngredientMeta, listCategories,
   applyTransaction, listTransactions,
@@ -1545,6 +1679,7 @@ module.exports = {
   listMenuItems,
   // --- Sprint 5 (SI-26 employee performance, SI-27 audit logs) ---
   listAuditLogs, createAuditLog,
+  syncStockAlerts, listOpenStockAlerts,
   listEmployeePerformanceReports, findEmployeePerformanceReportById,
   createEmployeePerformanceReport, updateEmployeePerformanceReport,
   deleteEmployeePerformanceReport,

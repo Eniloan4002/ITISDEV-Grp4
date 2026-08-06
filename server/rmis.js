@@ -13,6 +13,7 @@
 // All mutations are timestamped and linked to the acting user (traceability).
 
 const dbApi = require('./db');
+const audit = require('./audit');
 const { sendJson, readJson, requireRole, sessionName } = require('./http-util');
 
 // Ingredients nearing expiry within this many days are flagged for highlight.
@@ -98,20 +99,103 @@ function nonNegNum(v) { return typeof v === 'number' && Number.isFinite(v) && v 
 
 // ---- suppliers ------------------------------------------------------------
 
-async function getSuppliers(req, res, getSession) {
+async function getSuppliers(req, res, getSession, query) {
   if (!requireRole(req, res, getSession, INVENTORY_ROLES)) return;
-  sendJson(res, 200, { suppliers: await dbApi.listSuppliers() });
+  const q = ((query && query.get('q')) || '').trim();
+  sendJson(res, 200, { suppliers: await dbApi.listSuppliers({ q }) });
+}
+
+async function getSupplier(req, res, getSession, id) {
+  if (!requireRole(req, res, getSession, INVENTORY_ROLES)) return;
+  const row = await dbApi.findSupplierById(id);
+  if (!row) return sendJson(res, 404, { message: 'Supplier not found.' });
+  sendJson(res, 200, { supplier: row });
+}
+
+// SI-15 field contract. Every value is trimmed; failures name the field so the
+// form can highlight it. `exceptId` allows an update to keep its own name.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function validateSupplier(data, exceptId) {
+  const v = {
+    name: String(data.name || '').trim(),
+    contactPerson: String(data.contactPerson || '').trim(),
+    email: String(data.email || '').trim(),
+    phone: String(data.phone || '').trim(),
+    address: String(data.address || '').trim(),
+    billingAddress: String(data.billingAddress || '').trim(),
+    tin: String(data.tin || '').trim(),
+  };
+  const errors = {};
+  if (!v.name) errors.name = 'Company name is required.';
+  if (!v.contactPerson) errors.contactPerson = 'Contact person is required.';
+  if (!v.email) errors.email = 'Email is required.';
+  else if (!EMAIL_RE.test(v.email)) errors.email = 'Enter a valid email address.';
+  if (!v.phone) errors.phone = 'Phone number is required.';
+  if (!v.address) errors.address = 'Physical address is required.';
+  if (!v.billingAddress) errors.billingAddress = 'Billing address is required.';
+  if (!v.tin) errors.tin = 'TIN / business ID is required.';
+
+  if (v.name && !errors.name && await dbApi.supplierNameTaken(v.name, exceptId)) {
+    errors.name = 'Another supplier already uses this company name.';
+  }
+  if (Object.keys(errors).length) {
+    return { error: { message: 'Please correct the highlighted fields.', errors } };
+  }
+  return v;
+}
+
+// MySQL duplicate-key (ER_DUP_ENTRY) becomes a clear 409 rather than a 500.
+function isDuplicateKey(err) {
+  return err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062);
 }
 
 async function postSupplier(req, res, getSession) {
-  if (!requireRole(req, res, getSession, MANAGER_ROLES)) return;
+  const s = requireRole(req, res, getSession, MANAGER_ROLES);
+  if (!s) return;
   let data;
   try { data = await readJson(req); } catch { return sendJson(res, 400, { message: 'Invalid request.' }); }
-  const name = (data.name || '').trim();
-  if (!name) return sendJson(res, 400, { message: 'Supplier name is required.', errors: { name: 'Required.' } });
-  if (await dbApi.findSupplierByName(name)) return sendJson(res, 409, { message: 'Supplier already exists.', errors: { name: 'Already exists.' } });
-  const id = await dbApi.createSupplier(name);
-  sendJson(res, 201, { id, name });
+  const v = await validateSupplier(data, null);
+  if (v.error) return sendJson(res, 400, v.error);
+  try {
+    const id = await dbApi.createSupplier(v);
+    audit.record(req, { userId: s.userId, email: s.email }, 'SUPPLIER_CREATED', 'suppliers',
+      `Created supplier ${v.name}.`);
+    sendJson(res, 201, { supplier: await dbApi.findSupplierById(id) });
+  } catch (err) {
+    if (isDuplicateKey(err)) {
+      return sendJson(res, 409, {
+        message: 'Another supplier already uses this company name.',
+        errors: { name: 'Already exists.' },
+      });
+    }
+    throw err;
+  }
+}
+
+async function patchSupplier(req, res, getSession, id) {
+  const s = requireRole(req, res, getSession, MANAGER_ROLES);
+  if (!s) return;
+  const existing = await dbApi.findSupplierById(id);
+  if (!existing) return sendJson(res, 404, { message: 'Supplier not found.' });
+  let data;
+  try { data = await readJson(req); } catch { return sendJson(res, 400, { message: 'Invalid request.' }); }
+  const v = await validateSupplier(data, id);
+  if (v.error) return sendJson(res, 400, v.error);
+  try {
+    await dbApi.updateSupplier(id, v);
+    audit.record(req, { userId: s.userId, email: s.email }, 'SUPPLIER_UPDATED', 'suppliers',
+      `Updated supplier ${v.name}.`);
+    sendJson(res, 200, { supplier: await dbApi.findSupplierById(id) });
+  } catch (err) {
+    if (isDuplicateKey(err)) {
+      return sendJson(res, 409, {
+        message: 'Another supplier already uses this company name.',
+        errors: { name: 'Already exists.' },
+      });
+    }
+    throw err;
+  }
 }
 
 // ---- ingredients ----------------------------------------------------------
@@ -433,12 +517,18 @@ async function route(req, res, getSession) {
   const pathName = parsed.pathname;
   const query = parsed.searchParams;
   const method = req.method;
+  let m;
 
   if (!pathName.startsWith('/api/')) return false;
 
   // /api/suppliers
-  if (pathName === '/api/suppliers' && method === 'GET') { await getSuppliers(req, res, getSession); return true; }
+  if (pathName === '/api/suppliers' && method === 'GET') { await getSuppliers(req, res, getSession, query); return true; }
   if (pathName === '/api/suppliers' && method === 'POST') { await postSupplier(req, res, getSession); return true; }
+  if ((m = pathName.match(/^\/api\/suppliers\/(\d+)$/))) {
+    const id = Number(m[1]);
+    if (method === 'GET') { await getSupplier(req, res, getSession, id); return true; }
+    if (method === 'PATCH') { await patchSupplier(req, res, getSession, id); return true; }
+  }
 
   // /api/categories
   if (pathName === '/api/categories' && method === 'GET') { await getCategories(req, res, getSession); return true; }
@@ -450,7 +540,6 @@ async function route(req, res, getSession) {
   if (pathName === '/api/ingredients' && method === 'GET') { await getIngredients(req, res, getSession, query); return true; }
   if (pathName === '/api/ingredients' && method === 'POST') { await postIngredient(req, res, getSession); return true; }
 
-  let m;
   if ((m = pathName.match(/^\/api\/ingredients\/(\d+)$/))) {
     const id = Number(m[1]);
     if (method === 'GET') { await getIngredient(req, res, getSession, id); return true; }

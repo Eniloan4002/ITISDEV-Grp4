@@ -30,37 +30,44 @@
 
     <main class="content">
       <div class="page-head">
-        <h1>Supplier &amp; Commissary</h1>
-        <span class="pill pill-sprint">Placeholder &middot; Sprint 3</span>
-      </div>
-      <div class="banner">
-        <strong>Placeholder module.</strong> Procurement, purchase orders, and supply
-        coordination are scheduled for the <strong>Sprint 3 &mdash; Management
-        Modules</strong> build. Figures below are demo data.
+        <h1>Supplier Records</h1>
+        <span class="pill pill-live">Live</span>
       </div>
 
-      <section class="kpi-row">
-        <div class="kpi"><div class="kpi-label">Suppliers</div><div class="kpi-value">18</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Open POs</div><div class="kpi-value">5</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Due Deliveries</div><div class="kpi-value">2</div><div class="kpi-sub">demo data</div></div>
-        <div class="kpi"><div class="kpi-label">Spend MTD</div><div class="kpi-value">₱210k</div><div class="kpi-sub">demo data</div></div>
-      </section>
+      <div class="notice" id="page-notice" hidden></div>
+
+      <div class="toolbar">
+        <div class="field-inline">
+          <label for="f-search">Search</label>
+          <input class="rmis-input" id="f-search" type="search"
+                 placeholder="Company, contact, email, phone, TIN or address&hellip;">
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button type="button" class="btn-primary" id="new-supplier">New supplier</button>
+        </div>
+      </div>
 
       <div class="card">
-        <div class="card-head">Purchase orders <span class="demo-note">&mdash; sample rows</span></div>
+        <div class="card-head">Active suppliers</div>
         <table class="mock">
-          <thead><tr><th>PO #</th><th>Supplier</th><th>Items</th><th>Amount</th><th>Status</th></tr></thead>
-          <tbody>
-            <tr><td>PO-207</td><td>Iligan Meats</td><td>6</td><td>₱18,400</td><td><span class="tag tag-ok">Received</span></td></tr>
-            <tr><td>PO-208</td><td>Fresh Farms</td><td>12</td><td>₱9,750</td><td><span class="tag tag-warn">Pending</span></td></tr>
-            <tr><td>PO-209</td><td>Bean Traders</td><td>3</td><td>₱6,200</td><td><span class="tag tag-warn">In transit</span></td></tr>
-            <tr><td>PO-210</td><td>City Poultry</td><td>4</td><td>₱11,000</td><td><span class="tag tag-ok">Received</span></td></tr>
-          </tbody>
+          <thead><tr>
+            <th>Company</th><th>Contact person</th><th>Email</th>
+            <th>Phone</th><th>TIN</th><th>Physical address</th><th></th>
+          </tr></thead>
+          <tbody id="supplier-body"></tbody>
         </table>
+        <div class="empty-state" id="supplier-empty" hidden>No suppliers match this search.</div>
       </div>
     </main>
   </div>
 
+  <!-- openModal() in rmis-ui.js writes into these; without them the edit form
+       silently fails to appear. -->
+  <div class="modal-overlay" id="modal" hidden><div class="modal modal-wide" id="modal-card"></div></div>
+
   <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/supplier.js"></script>
 </body>
 </html>

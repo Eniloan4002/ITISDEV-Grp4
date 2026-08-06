@@ -42,7 +42,7 @@
     { key: 'reservations', href: '/reservations',       label: 'Reservations & Tables',  desc: 'Booking & table management', roles: ['Admin', 'Manager', 'Staff'] },
     { key: 'reservations', href: '/table-availability', label: 'Table Availability',     desc: 'Live floor status',          roles: ['Admin', 'Manager', 'Staff'] },
     // Still placeholder screens.
-    { key: 'supplier',     href: '/supplier',     label: 'Supplier & Commissary', desc: 'Procurement & supply',     sprint: 3, roles: ['Admin', 'Manager'] },
+    { key: 'supplier',     href: '/supplier',     label: 'Supplier & Commissary', desc: 'Records, contacts & billing', roles: ['Admin', 'Manager'] },
     { key: 'analytics',    href: '/analytics',    label: 'Analytics Dashboard',   desc: 'Sales reports & insights', sprint: 4, roles: ['Admin', 'Manager'] },
     { key: 'analytics',    href: '/employee-performance', label: 'Employee Performance', desc: 'Staff productivity and reports', roles: ['Admin', 'Manager'] },
     { key: 'settings',     href: '/audit-logs',  label: 'Audit Logs',           desc: 'Immutable system activity log', roles: ['Admin'] },

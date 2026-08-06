@@ -9,6 +9,10 @@ const mysql = require('mysql2/promise');
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
   port: Number(process.env.DB_PORT || 3306),
+  // No silent fallback to root with an empty password: on a misconfigured
+  // deploy that produces a confusing "Access denied" rather than an obvious
+  // "you forgot .env". Local development still works because .env.example
+  // ships those very values.
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'AMDB',
@@ -39,6 +43,12 @@ pool.on('connection', (conn) => {
 });
 
 let initPromise;
+
+if (!process.env.DB_NAME) {
+  console.warn('[db] DB_NAME is unset — .env was probably not created. ' +
+               'Copy .env.example to .env. Falling back to AMDB on 127.0.0.1.');
+}
+
 
 function splitName(fullName) {
   const cleaned = String(fullName || '').trim().replace(/\s+/g, ' ');

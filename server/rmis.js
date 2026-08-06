@@ -13,6 +13,7 @@
 // All mutations are timestamped and linked to the acting user (traceability).
 
 const dbApi = require('./db');
+const { sendJson, readJson, requireRole, sessionName } = require('./http-util');
 
 // Ingredients nearing expiry within this many days are flagged for highlight.
 const EXPIRY_WINDOW_DAYS = 7;
@@ -22,25 +23,8 @@ const EXPIRY_WINDOW_DAYS = 7;
 const INVENTORY_ROLES = ['Admin', 'Manager', 'Staff']; // view + receive/consume
 const MANAGER_ROLES = ['Admin', 'Manager'];            // adjustments, POs, edits
 
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
-
 // Read + parse a JSON request body. Resolves to {} for an empty body,
 // rejects (caller responds 400) for malformed JSON.
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (chunk) => { raw += chunk; });
-    req.on('end', () => {
-      if (!raw) return resolve({});
-      try { resolve(JSON.parse(raw)); } catch { reject(new Error('bad json')); }
-    });
-    req.on('error', reject);
-  });
-}
-
 // ---- derived fields -------------------------------------------------------
 
 // 'out' (<= 0), 'low' (<= reorder level), or 'ok'. A reorder level of 0 means
@@ -108,13 +92,6 @@ function serializeTxn(t) {
 
 // Resolve the session and enforce a role set. Responds (401/403) and returns
 // null when the request is not allowed; returns the session otherwise.
-function requireRole(req, res, getSession, roles) {
-  const s = getSession(req);
-  if (!s) { sendJson(res, 401, { message: 'Not authenticated.' }); return null; }
-  if (!roles.includes(s.role)) { sendJson(res, 403, { message: 'You do not have access to this action.' }); return null; }
-  return s;
-}
-
 // Positive finite number check.
 function posNum(v) { return typeof v === 'number' && Number.isFinite(v) && v > 0; }
 function nonNegNum(v) { return typeof v === 'number' && Number.isFinite(v) && v >= 0; }
@@ -447,11 +424,6 @@ async function receivePurchaseOrder(req, res, getSession, id) {
 
 // Display name for traceability. The session stores email + role; fall back to
 // the email local-part when we don't have a full name to hand.
-async function sessionName(s) {
-  const u = await dbApi.findUserById(s.userId);
-  return u ? u.full_name : (s.email || '').split('@')[0];
-}
-
 // ---- router ---------------------------------------------------------------
 
 // Returns true if this module handled the request. `getSession` comes from

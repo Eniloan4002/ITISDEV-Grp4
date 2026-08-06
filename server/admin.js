@@ -11,29 +11,11 @@
 // (prevents locking the whole system out of administration).
 
 const dbApi = require('./db');
+const { sendJson, readJson, requireAdmin } = require('./http-util');
 const audit = require('./audit');
 const { hashPassword } = require('./password');
 
 const ROLES = ['Admin', 'Manager', 'Cashier', 'Staff'];
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (c) => { raw += c; });
-    req.on('end', () => { if (!raw) return resolve({}); try { resolve(JSON.parse(raw)); } catch { reject(new Error('bad json')); } });
-    req.on('error', reject);
-  });
-}
-function requireAdmin(req, res, getSession) {
-  const s = getSession(req);
-  if (!s) { sendJson(res, 401, { message: 'Not authenticated.' }); return null; }
-  if (s.role !== 'Admin') { sendJson(res, 403, { message: 'Admin access required.' }); return null; }
-  return s;
-}
 
 function serializeUser(u, meId) {
   return {

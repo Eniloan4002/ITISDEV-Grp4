@@ -60,7 +60,7 @@ form.addEventListener('submit', async (event) => {
       // Only a registered email returns a link; reveal it when present.
       if (data.resetLink) {
         resetLinkBox.innerHTML =
-          '<a href="' + data.resetLink + '">Click here to reset your password</a>' +
+          '<a href="' + encodeURI(data.resetLink) + '">Click here to reset your password</a>' +
           '<p class="field-hint">This link normally arrives by email. For this demo it is shown here.</p>';
         resetLinkBox.hidden = false;
       }

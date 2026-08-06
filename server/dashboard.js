@@ -6,11 +6,7 @@
 // Each role gets four relevant tiles.
 
 const dbApi = require('./db');
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
+const { sendJson } = require('./http-util');
 
 function money(n) {
   return '₱' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

@@ -17,6 +17,8 @@ const admin = require('./admin');
 const employeePerformance = require('./employee-performance');
 const auditLogs = require('./audit-logs');
 const audit = require('./audit');
+const rateLimit = require('./rate-limit');
+const { sendJson, readJson } = require('./http-util');
 const { hashPassword, verifyPassword } = require('./password');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -83,11 +85,6 @@ function validate(data) {
   return errors;
 }
 
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
-
 function parseCookies(req) {
   const header = req.headers.cookie;
   if (!header) return {};
@@ -106,27 +103,10 @@ function getSession(req) {
   return sessions.get(token) || null;
 }
 
-function readJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (chunk) => {
-      raw += chunk;
-    });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(raw || '{}'));
-      } catch {
-        reject(new Error('INVALID_JSON'));
-      }
-    });
-    req.on('error', reject);
-  });
-}
-
 async function handleRegister(req, res) {
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -175,7 +155,7 @@ async function handleRegister(req, res) {
 async function handleLogin(req, res) {
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -185,6 +165,17 @@ async function handleLogin(req, res) {
   }
 
   const email = data.email.trim().toLowerCase();
+  const ip = audit.clientIp(req);
+
+  // SI-7 lockout: refuse further guesses once this email+address has failed
+  // MAX_ATTEMPTS times, and say how long the lock lasts.
+  const gate = rateLimit.check(email, ip);
+  if (gate.locked) {
+    return sendJson(res, 429, {
+      message: `Too many failed attempts. Try again in ${Math.ceil(gate.retryAfterSec / 60)} minute(s).`,
+    });
+  }
+
   let user;
 
   try {
@@ -197,12 +188,17 @@ async function handleLogin(req, res) {
   if (!user || !verifyPassword(data.password, user.password_hash)) {
     // Only recordable when the address matches a real account: audit_logs.user_id
     // is NOT NULL and foreign-keyed, so an unknown address has no actor to log.
+    const outcome = rateLimit.recordFailure(email, ip);
     if (user) {
-      audit.record(req, { userId: user.id, email: user.email }, 'LOGIN_FAILED', 'accounts', 'Incorrect password.');
+      audit.record(req, { userId: user.id, email: user.email }, 'LOGIN_FAILED', 'accounts',
+        outcome.locked ? 'Incorrect password — account locked after repeated failures.' : 'Incorrect password.');
     }
+    // Deliberately the same generic message whether the address exists, the
+    // password was wrong, or the lock just engaged — no account enumeration.
     return sendJson(res, 401, { message: 'Invalid email or password.' });
   }
 
+  rateLimit.reset(email, ip);
   const token = crypto.randomBytes(32).toString('hex');
   sessions.set(token, { userId: user.id, email: user.email, role: user.role });
   audit.record(req, { userId: user.id, email: user.email }, 'LOGIN_SUCCESS', 'accounts', `Signed in as ${user.role}.`);
@@ -265,7 +261,7 @@ async function handleUpdateProfile(req, res) {
 
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -299,7 +295,7 @@ async function handleUpdateProfile(req, res) {
 async function handleResetRequest(req, res) {
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -334,7 +330,7 @@ async function handleResetRequest(req, res) {
 async function handleResetConfirm(req, res) {
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -416,7 +412,7 @@ async function handleCreateIngredient(req, res) {
 
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -460,7 +456,7 @@ async function handleInventoryTransaction(req, res) {
 
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -535,7 +531,7 @@ async function handleCreateReservation(req, res) {
 
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -592,7 +588,7 @@ async function handleUpdateReservationStatus(req, res, reservationId) {
 
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }
@@ -623,7 +619,7 @@ async function handleUpdateTableStatus(req, res, tableId) {
 
   let data;
   try {
-    data = await readJsonBody(req);
+    data = await readJson(req);
   } catch {
     return sendJson(res, 400, { message: 'Invalid request.' });
   }

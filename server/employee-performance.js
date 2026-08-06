@@ -1,31 +1,8 @@
 const dbApi = require('./db');
+const { sendJson, readJson, requireRole } = require('./http-util');
 
 const REPORT_ROLES = ['Admin', 'Manager'];
 const EXPORT_TYPES = ['csv', 'pdf'];
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
-
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (chunk) => { raw += chunk; });
-    req.on('end', () => {
-      if (!raw) return resolve({});
-      try { resolve(JSON.parse(raw)); } catch { reject(new Error('bad json')); }
-    });
-    req.on('error', reject);
-  });
-}
-
-function requireRole(req, res, getSession, roles) {
-  const s = getSession(req);
-  if (!s) { sendJson(res, 401, { message: 'Not authenticated.' }); return null; }
-  if (!roles.includes(s.role)) { sendJson(res, 403, { message: 'Manager or Admin access required.' }); return null; }
-  return s;
-}
 
 function validatePerformancePayload(data = {}) {
   const errors = {};
@@ -55,7 +32,7 @@ function buildCsv(rows) {
 }
 
 async function listReports(req, res, getSession, query) {
-  const s = requireRole(req, res, getSession, REPORT_ROLES);
+  const s = requireRole(req, res, getSession, REPORT_ROLES, 'Manager or Admin access required.');
   if (!s) return;
 
   const employeeName = (query.get('employeeName') || '').trim();
@@ -71,7 +48,7 @@ async function listReports(req, res, getSession, query) {
 }
 
 async function createReport(req, res, getSession) {
-  const s = requireRole(req, res, getSession, REPORT_ROLES);
+  const s = requireRole(req, res, getSession, REPORT_ROLES, 'Manager or Admin access required.');
   if (!s) return;
 
   let data;
@@ -99,7 +76,7 @@ async function createReport(req, res, getSession) {
 }
 
 async function getReport(req, res, getSession, id) {
-  const s = requireRole(req, res, getSession, REPORT_ROLES);
+  const s = requireRole(req, res, getSession, REPORT_ROLES, 'Manager or Admin access required.');
   if (!s) return;
 
   try {
@@ -113,7 +90,7 @@ async function getReport(req, res, getSession, id) {
 }
 
 async function exportReport(req, res, getSession) {
-  const s = requireRole(req, res, getSession, REPORT_ROLES);
+  const s = requireRole(req, res, getSession, REPORT_ROLES, 'Manager or Admin access required.');
   if (!s) return;
 
   const parsed = new URL(req.url, 'http://localhost');
@@ -136,7 +113,7 @@ async function exportReport(req, res, getSession) {
 }
 
 async function updateReport(req, res, getSession, id) {
-  const s = requireRole(req, res, getSession, REPORT_ROLES);
+  const s = requireRole(req, res, getSession, REPORT_ROLES, 'Manager or Admin access required.');
   if (!s) return;
   let data;
   try { data = await readJson(req); } catch { return sendJson(res, 400, { message: 'Invalid request.' }); }
@@ -153,7 +130,7 @@ async function updateReport(req, res, getSession, id) {
 }
 
 async function deleteReport(req, res, getSession, id) {
-  const s = requireRole(req, res, getSession, REPORT_ROLES);
+  const s = requireRole(req, res, getSession, REPORT_ROLES, 'Manager or Admin access required.');
   if (!s) return;
   try {
     const ok = await dbApi.deleteEmployeePerformanceReport(id);

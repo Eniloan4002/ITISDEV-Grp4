@@ -13,6 +13,7 @@
 // recipe entity yet), so settling a bill does not deduct stock.
 
 const dbApi = require('./db');
+const { sendJson, readJson, requireRole, sessionName } = require('./http-util');
 const audit = require('./audit');
 
 const SALES_ROLES = ['Admin', 'Manager', 'Cashier']; // create / settle / view
@@ -20,28 +21,6 @@ const MANAGER_ROLES = ['Admin', 'Manager'];          // void
 const PAYMENT_METHODS = ['Cash', 'Card', 'GCash'];
 const VAT_RATE = 0.12; // Philippine VAT, applied on (subtotal - discount).
 
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (c) => { raw += c; });
-    req.on('end', () => { if (!raw) return resolve({}); try { resolve(JSON.parse(raw)); } catch { reject(new Error('bad json')); } });
-    req.on('error', reject);
-  });
-}
-function requireRole(req, res, getSession, roles) {
-  const s = getSession(req);
-  if (!s) { sendJson(res, 401, { message: 'Not authenticated.' }); return null; }
-  if (!roles.includes(s.role)) { sendJson(res, 403, { message: 'You do not have access to this action.' }); return null; }
-  return s;
-}
-async function sessionName(s) {
-  const u = await dbApi.findUserById(s.userId);
-  return u ? u.full_name : (s.email || '').split('@')[0];
-}
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 const posNum = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;
 const nonNegNum = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 0;

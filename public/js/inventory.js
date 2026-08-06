@@ -1,3 +1,13 @@
+
+// Escape any value that reaches innerHTML. Reservation names, ingredient names,
+// table locations and profile display names are all user-supplied and stored, so
+// interpolating them raw is a stored-XSS vector.
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 const messageEl = document.getElementById('form-message');
 const bodyEl = document.getElementById('inventory-body');
 const filterForm = document.getElementById('filter-form');
@@ -70,7 +80,7 @@ function renderIngredientOptions(items) {
   for (const item of items) {
     const opt = document.createElement('option');
     opt.value = item.ingredient_id;
-    opt.textContent = `${item.ingredient_name} (${item.current_quantity} ${item.unit_of_measure})`;
+    opt.textContent = `${esc(item.ingredient_name)} (${esc(item.current_quantity)} ${esc(item.unit_of_measure)})`;
     txIngredientEl.appendChild(opt);
   }
   if ([...txIngredientEl.options].some((o) => o.value === current)) {
@@ -93,14 +103,14 @@ function renderRows(items) {
     const supplier = item.supplier_name || '-';
     return (
       `<tr class="${cls}">` +
-        `<td>${item.ingredient_name}</td>` +
-        `<td>${item.ingredient_type_name}</td>` +
-        `<td>${supplier}</td>` +
+        `<td>${esc(item.ingredient_name)}</td>` +
+        `<td>${esc(item.ingredient_type_name)}</td>` +
+        `<td>${esc(supplier)}</td>` +
         `<td>${current.toFixed(2)}</td>` +
-        `<td>${item.unit_of_measure}</td>` +
+        `<td>${esc(item.unit_of_measure)}</td>` +
         `<td>${reorder.toFixed(2)}</td>` +
         `<td>${dateText(item.expiration_date)}</td>` +
-        `<td><span class="status-pill ${statusClass(item.stock_status)}">${item.stock_status}</span></td>` +
+        `<td><span class="status-pill ${statusClass(item.stock_status)}">${esc(item.stock_status)}</span></td>` +
       '</tr>'
     );
   }).join('');

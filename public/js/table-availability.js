@@ -1,3 +1,13 @@
+
+// Escape any value that reaches innerHTML. Reservation names, ingredient names,
+// table locations and profile display names are all user-supplied and stored, so
+// interpolating them raw is a stored-XSS vector.
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 const messageEl = document.getElementById('form-message');
 const floorPlanEl = document.getElementById('floor-plan');
 const bodyEl = document.getElementById('tables-body');
@@ -49,13 +59,13 @@ function renderFloorPlan(tables) {
   const planHtml = tables.map((t) => {
     const statusClass = getTableStatusClass(t.table_status);
     const reservationInfo = t.reservation_id 
-      ? `<div class="table-reservation">${t.customer_name}</div>`
+      ? `<div class="table-reservation">${esc(t.customer_name)}</div>`
       : '';
     
     return (
-      `<div class="table-item ${statusClass}" data-table-id="${t.table_id}">` +
-        `<div class="table-number">${t.table_number}</div>` +
-        `<div class="table-capacity">${t.seating_capacity}</div>` +
+      `<div class="table-item ${statusClass}" data-table-id="${esc(t.table_id)}">` +
+        `<div class="table-number">${esc(t.table_number)}</div>` +
+        `<div class="table-capacity">${esc(t.seating_capacity)}</div>` +
         reservationInfo +
       `</div>`
     );
@@ -84,18 +94,18 @@ function renderTablesList(tables) {
   bodyEl.innerHTML = tables.map((t) => {
     const statusClass = getTableStatusClass(t.table_status);
     const reservation = t.reservation_id 
-      ? `${t.customer_name} (${t.party_size} ppl, ${t.reservation_status})`
+      ? `${esc(t.customer_name)} (${esc(t.party_size)} ppl, ${esc(t.reservation_status)})`
       : '-';
     
     return (
       '<tr>' +
-        `<td>${t.table_number}</td>` +
-        `<td>${t.seating_capacity}</td>` +
-        `<td>${t.table_location || '-'}</td>` +
-        `<td><span class="status-pill ${statusClass === 'available' ? 'is-ok' : statusClass === 'occupied' ? 'is-warning' : 'is-danger'}">${t.table_status}</span></td>` +
+        `<td>${esc(t.table_number)}</td>` +
+        `<td>${esc(t.seating_capacity)}</td>` +
+        `<td>${esc(t.table_location || '-')}</td>` +
+        `<td><span class="status-pill ${statusClass === 'available' ? 'is-ok' : statusClass === 'occupied' ? 'is-warning' : 'is-danger'}">${esc(t.table_status)}</span></td>` +
         `<td>${reservation}</td>` +
         `<td>` +
-          `<select class="status-select" onchange="updateTableStatus(${t.table_id}, this)">` +
+          `<select class="status-select" onchange="updateTableStatus(${esc(t.table_id)}, this)">` +
             `<option value="">Update status...</option>` +
             `<option value="Available">Available</option>` +
             `<option value="Occupied">Occupied</option>` +
@@ -135,7 +145,7 @@ async function loadTables() {
 }
 
 function showTableStatusModal(tableId, tableNumber, currentStatus) {
-  const statusEl = document.querySelector(`select[onchange="updateTableStatus(${tableId}, this)"]`);
+  const statusEl = document.querySelector(`select[onchange="updateTableStatus(${esc(tableId)}, this)"]`);
   if (statusEl) {
     statusEl.focus();
     statusEl.click();
@@ -148,7 +158,7 @@ async function updateTableStatus(tableId, selectEl) {
   if (!status) return;
 
   try {
-    const res = await fetch(`/api/tables/${tableId}`, {
+    const res = await fetch(`/api/tables/${esc(tableId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),

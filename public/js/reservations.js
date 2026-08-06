@@ -1,3 +1,13 @@
+
+// Escape any value that reaches innerHTML. Reservation names, ingredient names,
+// table locations and profile display names are all user-supplied and stored, so
+// interpolating them raw is a stored-XSS vector.
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
 const messageEl = document.getElementById('form-message');
 const reservationForm = document.getElementById('reservation-form');
 const bodyEl = document.getElementById('reservations-body');
@@ -65,15 +75,15 @@ function renderReservations(reservations) {
   bodyEl.innerHTML = reservations.map((r) => {
     return (
       '<tr>' +
-        `<td>${r.customer_name}</td>` +
-        `<td>${r.contact_number}</td>` +
-        `<td>${r.party_size}</td>` +
-        `<td>${r.table_number || '-'}</td>` +
+        `<td>${esc(r.customer_name)}</td>` +
+        `<td>${esc(r.contact_number)}</td>` +
+        `<td>${esc(r.party_size)}</td>` +
+        `<td>${esc(r.table_number || '-')}</td>` +
         `<td>${dateText(r.reservation_start)}</td>` +
         `<td>${dateText(r.reservation_end)}</td>` +
-        `<td><span class="status-pill ${statusColor(r.reservation_status)}">${r.reservation_status}</span></td>` +
+        `<td><span class="status-pill ${statusColor(r.reservation_status)}">${esc(r.reservation_status)}</span></td>` +
         `<td>` +
-          `<select class="status-select" data-reservation-id="${r.reservation_id}" onchange="updateStatus(this)">` +
+          `<select class="status-select" data-reservation-id="${esc(r.reservation_id)}" onchange="updateStatus(this)">` +
             `<option value="">Update...</option>` +
             `<option value="Confirmed">Confirm</option>` +
             `<option value="Seated">Seated</option>` +
@@ -132,7 +142,7 @@ async function updateStatus(selectEl) {
   if (!status) return;
 
   try {
-    const res = await fetch(`/api/reservations/${reservationId}`, {
+    const res = await fetch(`/api/reservations/${esc(reservationId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),

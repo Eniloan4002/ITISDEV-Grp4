@@ -11,32 +11,12 @@
 // their own schedule, and file leave. Managers/Admins manage everyone.
 
 const dbApi = require('./db');
+const { sendJson, readJson, requireRole, sessionName } = require('./http-util');
 
 const ALL_ROLES = ['Admin', 'Manager', 'Cashier', 'Staff']; // any employee
 const MANAGER_ROLES = ['Admin', 'Manager'];                 // manage/approve
 
 const LEAVE_TYPES = ['Vacation', 'Sick', 'Emergency', 'Personal'];
-
-function sendJson(res, status, body) {
-  res.writeHead(status, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(body));
-}
-
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (c) => { raw += c; });
-    req.on('end', () => { if (!raw) return resolve({}); try { resolve(JSON.parse(raw)); } catch { reject(new Error('bad json')); } });
-    req.on('error', reject);
-  });
-}
-
-function requireRole(req, res, getSession, roles) {
-  const s = getSession(req);
-  if (!s) { sendJson(res, 401, { message: 'Not authenticated.' }); return null; }
-  if (!roles.includes(s.role)) { sendJson(res, 403, { message: 'You do not have access to this action.' }); return null; }
-  return s;
-}
 
 // Local calendar date 'YYYY-MM-DD' (not UTC — matters near midnight).
 function todayStr() {
@@ -45,11 +25,6 @@ function todayStr() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 function nowIso() { return new Date().toISOString(); }
-
-async function sessionName(s) {
-  const u = await dbApi.findUserById(s.userId);
-  return u ? u.full_name : (s.email || '').split('@')[0];
-}
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;

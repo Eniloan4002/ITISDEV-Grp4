@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Dashboard &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Sales &amp; Billing</div>
+      <a class="side-link" href="/sales">Point of Sale</a>
+      <a class="side-link" href="/sales-history">Sales History</a>
+      <a class="side-link" href="/refunds">Refunds</a>
+      <a class="side-link is-active" href="/sales-dashboard">Sales Dashboard</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Sales Dashboard</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <!-- Changing the period refreshes every panel together; the server
+           supplies one normalised range so nothing can show a mixed period. -->
+      <div class="toolbar">
+        <div class="field-inline">
+          <label for="f-period">Period</label>
+          <select class="rmis-select" id="f-period">
+            <option value="day">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="custom">Custom range</option>
+          </select>
+        </div>
+        <div class="field-inline" id="wrap-from" hidden>
+          <label for="f-from">From</label>
+          <input class="rmis-input" id="f-from" type="date">
+        </div>
+        <div class="field-inline" id="wrap-to" hidden>
+          <label for="f-to">To</label>
+          <input class="rmis-input" id="f-to" type="date">
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <span class="demo-note" id="period-label"></span>
+        </div>
+      </div>
+
+      <section class="kpi-row" id="kpi-row"></section>
+
+      <div class="card">
+        <div class="card-head">Top-selling items</div>
+        <table class="mock">
+          <thead><tr><th>Item</th><th class="num">Qty sold</th><th class="num">Revenue</th><th>Share</th></tr></thead>
+          <tbody id="top-body"></tbody>
+        </table>
+        <div class="empty-state" id="top-empty" hidden>No sales in this period.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">Sales by hour <span class="demo-note">&mdash; peak hours</span></div>
+        <div class="hour-chart" id="hour-chart"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/sales-dashboard.js"></script>
+</body>
+</html>

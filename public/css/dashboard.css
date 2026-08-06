@@ -539,3 +539,45 @@ table.mock tr.row-leave td { background: #fbeecb55; }
   .topbar-nav { gap: 10px; }
   .user-name { display: none; }
 }
+
+/* ── SI-24 dashboard visualisation ──
+   Plain CSS bars rather than a charting library: the spec asks not to add a
+   dependency unless the stack cannot present the comparison clearly. */
+.bar-track {
+  background: rgba(90, 78, 58, 0.1);
+  border-radius: 3px;
+  height: 8px;
+  min-width: 80px;
+  overflow: hidden;
+}
+.bar-fill {
+  background: var(--tc-terracotta);
+  height: 100%;
+  border-radius: 3px;
+}
+
+.hour-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 18px;
+  height: 180px;
+}
+.hour-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.hour-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.hour-bar {
+  width: 100%;
+  min-height: 2px;
+  background: rgba(90, 78, 58, 0.25);
+  border-radius: 3px 3px 0 0;
+}
+.hour-bar.is-peak { background: var(--tc-terracotta); }
+.hour-label { font-size: 10px; color: var(--tc-muted); margin-top: 6px; font-variant-numeric: tabular-nums; }
+
+/* Read-only key/value rows inside a detail modal. */
+.form-grid .field-inline > span { font-size: 14px; padding-top: 2px; }
+
+/* Used by the SI-18 / SI-25 screens: a destructive-state tag and the hint text
+   under a form that explains an irreversible action. */
+.tag-danger { background: rgba(180, 30, 30, 0.12); color: #a01a1a; }
+.field-hint { font-size: 12px; color: var(--tc-muted); margin-top: 8px; }

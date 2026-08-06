@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales History &mdash; AM Restaurant RMIS</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="topbar-brand"><a href="/dashboard">AM <span>RMIS</span></a></div>
+    <nav class="topbar-nav">
+      <a class="topbar-link" href="/profile">My Profile</a>
+      <span class="user-name" id="user-name">&hellip;</span>
+      <span class="role-badge" id="user-role">&hellip;</span>
+      <button type="button" class="btn-logout" id="logout-btn">Logout</button>
+    </nav>
+  </header>
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <a class="side-back" href="/dashboard">&larr; All apps</a>
+      <div class="side-section">Sales &amp; Billing</div>
+      <a class="side-link" href="/sales">Point of Sale</a>
+      <a class="side-link is-active" href="/sales-history">Sales History</a>
+      <a class="side-link" href="/refunds">Refunds</a>
+      <a class="side-link" id="nav-dash" href="/sales-dashboard">Sales Dashboard</a>
+    </aside>
+
+    <main class="content">
+      <div class="page-head">
+        <h1>Sales History</h1>
+        <span class="pill pill-live">Live</span>
+      </div>
+
+      <div class="notice" id="page-notice" hidden></div>
+
+      <form id="filters" class="toolbar" novalidate>
+        <div class="field-inline">
+          <label for="f-no">Transaction no.</label>
+          <input class="rmis-input" id="f-no" type="search" placeholder="e.g. OR-001">
+        </div>
+        <div class="field-inline">
+          <label for="f-from">From</label>
+          <input class="rmis-input" id="f-from" type="date">
+        </div>
+        <div class="field-inline">
+          <label for="f-to">To</label>
+          <input class="rmis-input" id="f-to" type="date">
+        </div>
+        <div class="field-inline">
+          <label for="f-cashier">Cashier</label>
+          <select class="rmis-select" id="f-cashier"><option value="">All cashiers</option></select>
+        </div>
+        <div class="field-inline">
+          <label for="f-method">Payment</label>
+          <select class="rmis-select" id="f-method">
+            <option value="">All methods</option>
+            <option>Cash</option><option>Card</option>
+            <option>GCash</option><option>Maya</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field-inline">
+          <label for="f-status">Status</label>
+          <select class="rmis-select" id="f-status">
+            <option value="">All statuses</option>
+            <option>Open</option><option>Paid</option><option>Void</option>
+            <option>Partially Refunded</option><option>Refunded</option>
+          </select>
+        </div>
+        <div class="field-inline">
+          <label>&nbsp;</label>
+          <button type="button" class="btn-ghost" id="f-clear">Clear</button>
+        </div>
+      </form>
+
+      <div class="card">
+        <div class="card-head">Transactions <span class="demo-note" id="row-count"></span></div>
+        <table class="mock">
+          <thead><tr>
+            <th>Transaction</th><th>Date &amp; time</th><th>Cashier</th>
+            <th class="num">Total</th><th>Payment</th><th>Status</th><th class="num">Refunded</th><th></th>
+          </tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+        <div class="empty-state" id="history-empty" hidden>No transactions match these filters.</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="modal" hidden><div class="modal modal-wide" id="modal-card"></div></div>
+
+  <script src="/js/rmis-modules.js"></script>
+  <script src="/js/rmis-ui.js"></script>
+  <script src="/js/sales-history.js"></script>
+</body>
+</html>

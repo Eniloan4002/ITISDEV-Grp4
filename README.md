@@ -53,12 +53,34 @@ npm start        # -> http://localhost:3000
 npm run dev      # same, with --watch auto-restart
 ```
 
-On first boot a **default admin** is seeded so role-based access can be demoed:
+## Signing in
 
+`server/index.js` re-seeds a **default admin** on every boot, so this account
+always works:
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@amrestaurant.local` | `admin1234` | Admin |
+
+`SQL/AMDB accounts.sql` also seeds `manager@`, `cashier@` and `staff@`, but with
+scrypt hashes whose plaintext is **not recorded anywhere in this repo** — so after
+a fresh database load you cannot sign in as those three. To give all four a known
+password:
+
+```bash
+npm run seed:demo-passwords              # sets all four to admin1234
+npm run seed:demo-passwords -- s3cretpw  # or your own (min 8 chars)
 ```
-email:    admin@amrestaurant.local
-password: admin1234        (change after first login)
-```
+
+| Email | Role |
+|-------|------|
+| `admin@amrestaurant.local` | Admin |
+| `manager@amrestaurant.local` | Manager |
+| `cashier@amrestaurant.local` | Cashier |
+| `staff@amrestaurant.local` | Staff |
+
+Development convenience only — it overwrites whatever passwords those accounts
+have. Change the admin password after first login on anything that matters.
 
 ## Features & endpoints
 
@@ -117,7 +139,50 @@ present → Paid, otherwise → Open.
 | Sales dashboard | `/sales-dashboard` | Admin, Manager | `GET /api/sales-dashboard` |
 | Inventory reports | `/inventory-report` | Admin, Manager | `GET /api/inventory-report`, `POST /api/inventory-report/:id/count` |
 
-Roles: **Admin, Manager, Cashier, Staff**.
+## What each role sees
+
+Roles are **Admin, Manager, Cashier, Staff**. The home screen groups module tiles
+by umbrella category and draws only what the signed-in role may open; a category
+with nothing visible is omitted rather than shown empty. The tile list is shaped
+by `public/js/rmis-modules.js`, but `PROTECTED_PAGES` in `server/index.js` is the
+real gate — typing a URL you lack the role for returns 403 regardless.
+
+### Admin — 19 tiles, all six categories
+
+| Category | Modules |
+|----------|---------|
+| Inventory & Procurement | Ingredient Inventory, Stock Alerts, Stock Adjustment, Purchase Orders, Supplier & Commissary, Inventory Reports |
+| Sales & Billing | Sales & Billing, Sales History, Refunds, Sales Dashboard |
+| Attendance & Manpower | Attendance, Shift Schedules, Leave Requests |
+| Reservations & Tables | Reservations & Tables, Table Availability |
+| Reporting & Audit | Employee Performance, **Audit Logs** |
+| Administration | Create User Account, Admin Settings |
+
+### Manager — 16 tiles, five categories
+
+Everything the Admin sees **except Audit Logs** (Admin-only) and the whole
+**Administration** section.
+
+### Cashier — 6 tiles, two categories
+
+| Category | Modules |
+|----------|---------|
+| Sales & Billing | Sales & Billing, Sales History, Refunds |
+| Attendance & Manpower | Attendance, Shift Schedules, Leave Requests |
+
+Cashiers may raise a refund request but cannot approve one, and cannot reach the
+Sales Dashboard or Inventory Reports.
+
+### Staff — 7 tiles, three categories
+
+| Category | Modules |
+|----------|---------|
+| Inventory & Procurement | Ingredient Inventory, Stock Alerts |
+| Attendance & Manpower | Attendance, Shift Schedules, Leave Requests |
+| Reservations & Tables | Reservations & Tables, Table Availability |
+
+Staff can view stock and alerts but not adjust stock, raise purchase orders, use
+the POS, or see any reporting screen.
 
 ## Known scope limits
 
@@ -170,6 +235,8 @@ public/
   css/          # landing.css (landing) · styles.css (auth pages) · dashboard.css (app shell)
   js/           # one script per page + rmis-modules.js / rmis-ui.js shared runtime
   images/       # photos + logo
-SQL/            # AMDB schema, seed data, and reporting views
+SQL/            # AMDB schema, migration, seed data, and reporting views
+scripts/        # set-demo-passwords.js (dev convenience)
+tests/          # contract tests — `npm test`, no database required
 docs/           # sprint plans and backlog designs
 ```

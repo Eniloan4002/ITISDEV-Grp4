@@ -6,40 +6,61 @@
   <title>Login &mdash; AM Restaurant RMIS</title>
   <link rel="stylesheet" href="/css/styles.css">
 </head>
-<body>
-  <main class="container">
-    <header class="page-header">
-      <h1>AM Restaurant</h1>
-      <p class="subtitle">Enter your Employee ID to start your shift.</p>
-    </header>
-
-    <!-- Page-level message (error or notice). Hidden until set. -->
-    <p id="form-message" class="form-message" role="alert" hidden></p>
-
-    <form id="login-form" method="POST" novalidate>
-      <div class="field">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" autocomplete="off" required autofocus>
-        <span class="field-error" id="error-email"></span>
+<body class="login-page">
+  <div class="split-auth">
+    <aside class="split-auth__visual">
+      <div class="split-auth__brandbar">
+        <img src="/images/AM logo.jpg" alt="" class="split-auth__logo">
+        <div class="split-auth__brandbar-text">
+          <strong>AM Restaurant</strong>
+          <span>RMIS</span>
+        </div>
       </div>
 
-      <div class="field">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" autocomplete="off" required>
-        <label class="field show-password" for="toggle-password">
-          <input type="checkbox" id="toggle-password"> Show password
-        </label>
-        <span class="field-error" id="error-password"></span>
+      <div class="split-auth__copy">
+        <p class="split-auth__eyebrow">Employee Portal</p>
+        <p class="split-auth__title">AM Restaurant</p>
+        <p class="split-auth__subtitle">Restaurant Management Information System</p>
       </div>
+    </aside>
 
-      <div class="actions">
-        <button type="submit" id="submit-btn">Login</button>
-        <a href="/" class="cancel-link">Cancel</a>
+    <main class="split-auth__form">
+      <div class="auth-card">
+        <header class="page-header">
+          <p class="auth-card__eyebrow">Staff Sign-In</p>
+          <h1>Welcome back</h1>
+          <p class="subtitle">Enter your Employee ID to start your shift.</p>
+        </header>
+
+        <!-- Page-level message (error or notice). Hidden until set. -->
+        <p id="form-message" class="form-message" role="alert" hidden></p>
+
+        <form id="login-form" method="POST" novalidate>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" autocomplete="off" required autofocus>
+            <span class="field-error" id="error-email"></span>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="off" required>
+            <label class="field show-password" for="toggle-password">
+              <input type="checkbox" id="toggle-password"> Show password
+            </label>
+            <span class="field-error" id="error-password"></span>
+          </div>
+
+          <div class="actions">
+            <button type="submit" id="submit-btn">Login</button>
+            <a href="/" class="cancel-link">Cancel</a>
+          </div>
+
+          <p class="field-hint"><a href="/forgot-password">Forgot Password?</a></p>
+        </form>
       </div>
-
-      <p class="field-hint"><a href="/forgot-password">Forgot Password?</a></p>
-    </form>
-  </main>
+    </main>
+  </div>
 
   <script src="/js/login.js"></script>
 </body>

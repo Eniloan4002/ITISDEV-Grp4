@@ -488,3 +488,189 @@ section {
     gap: 12px;
   }
 }
+
+/* ------------------------------------------------------------------
+   Split-screen login (SI-7). Scoped entirely under .login-page /
+   .split-auth / .auth-card so the shared rules above — body, .container,
+   input, button — stay exactly as-is for register.html and every other
+   page on this stylesheet.
+
+   Colors are hardcoded (not this file's --primary-color) to match the
+   dashboard app-shell palette in dashboard.css — terracotta/brown/cream,
+   per the MCO1 pitch deck — so login flows straight into the same theme
+   the user lands on after signing in, instead of the older coral scheme
+   this stylesheet uses for the rest of the auth pages.
+   ------------------------------------------------------------------ */
+
+body.login-page {
+  display: block;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.split-auth {
+  display: flex;
+  min-height: 100vh;
+}
+
+.split-auth__visual {
+  flex: 0 0 50%;
+  min-height: 100vh;
+  padding: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: #3b2a20;
+  background-image:
+    linear-gradient(180deg, rgba(59, 42, 32, 0.25) 0%, rgba(43, 30, 22, 0.55) 55%, rgba(20, 13, 9, 0.90) 100%),
+    url('/images/AM_dining4.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #fff;
+}
+
+.split-auth__brandbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.split-auth__logo {
+  height: 40px;
+  width: 40px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 6px;
+  padding: 5px;
+  display: block;
+}
+
+.split-auth__brandbar-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.split-auth__brandbar-text strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.split-auth__brandbar-text span {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.split-auth__copy {
+  max-width: 420px;
+}
+
+.split-auth__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #d98a5f;
+  margin-bottom: 14px;
+}
+
+.split-auth__title {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 12px;
+}
+
+.split-auth__subtitle {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.78);
+  border-top: 2px solid #b0552f;
+  padding-top: 14px;
+  max-width: 300px;
+}
+
+.split-auth__form {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background-color: #faf0e6;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background-color: #ffffff;
+  border: 1px solid #e7d9c9;
+  border-radius: 6px;
+  padding: 40px;
+  box-shadow: 0 8px 24px rgba(59, 42, 32, 0.10);
+}
+
+.auth-card__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b0552f;
+  margin-bottom: 10px;
+}
+
+.auth-card h1 {
+  color: #3b2a20;
+}
+
+.auth-card .subtitle {
+  margin-top: 0;
+}
+
+.auth-card button {
+  background-color: #b0552f;
+}
+
+.auth-card button:hover {
+  background-color: #8f4425;
+}
+
+.auth-card input:focus {
+  border-color: #b0552f;
+  box-shadow: 0 0 0 3px rgba(176, 85, 47, 0.12);
+}
+
+.auth-card .field-hint a {
+  color: #b0552f;
+}
+
+@media (max-width: 860px) {
+  .split-auth {
+    flex-direction: column;
+  }
+
+  .split-auth__visual {
+    flex: 0 0 auto;
+    min-height: 220px;
+    padding: 24px;
+  }
+
+  .split-auth__title {
+    font-size: 30px;
+  }
+
+  .split-auth__subtitle {
+    display: none;
+  }
+
+  .split-auth__form {
+    padding: 32px 20px 48px;
+  }
+
+  .auth-card {
+    padding: 28px 24px;
+    box-shadow: none;
+    border: none;
+  }
+}

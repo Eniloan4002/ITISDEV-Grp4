@@ -19,3 +19,4 @@ removelater/
 
 # Editor config — personal, not project
 .vscode/
+/docs
